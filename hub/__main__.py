@@ -5,11 +5,13 @@
   python -m hub transcribe <video>                          print the transcript (no API key)
   python -m hub scan                                        edit every new video in inbox/ once
   python -m hub watch                                       scan every POLL_MINUTES, forever
+  python -m hub serve                                       password-protected upload page (needs APP_PASSWORD)
 """
 
 import argparse
 import asyncio
 import json
+import os
 from pathlib import Path
 
 from . import config, media
@@ -34,6 +36,8 @@ def main() -> None:
 
     sub.add_parser("scan", help="edit every new upload once")
     sub.add_parser("watch", help="keep scanning on a timer")
+    p = sub.add_parser("serve", help="run the upload web page")
+    p.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8000")))
 
     args = parser.parse_args()
     media.require_ffmpeg()
@@ -62,6 +66,10 @@ def main() -> None:
     elif args.cmd == "watch":
         from .watcher import watch_forever
         watch_forever()
+
+    elif args.cmd == "serve":
+        import uvicorn
+        uvicorn.run("hub.web:app", host="0.0.0.0", port=args.port, proxy_headers=True)
 
 
 if __name__ == "__main__":

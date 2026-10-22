@@ -54,6 +54,7 @@ hub/
   media.py          ffmpeg: probe, extract audio, cut + crop + burn + logo
   brand.py          loads clients/<id>/brand_kit.json
   watcher.py        the trigger: checks inbox/<client>/ for new videos
+  web.py            password-protected upload page for testing
   integrations/     STUBS for Google Drive, R2, GHL, Base44, notifications
 clients/sample-clinic/   a made-up client: brand_kit.json + logo.png
 .claude/skills/          skills the agent loads (Greg's go here; see its README)
@@ -83,23 +84,38 @@ Without an API key you can still:
 ```sh
 python -m hub transcribe some-video.mp4                    # see the transcript
 python -m hub render some-video.mp4 --client sample-clinic --plan plan.json
-pytest                                                     # 12 tests, ~2.5 min (two real renders)
+pytest                                                     # 19 tests, ~2 min (two real renders)
 ```
 
 A `plan.json` looks like:
 `{"start": 12.4, "end": 51.0, "hook": "Stop icing your knee", "post_caption": "...", "why": "..."}`
 
+## The upload page (for testing)
+
+`python -m hub serve` starts a small web page: pick a client brand kit and a video,
+press **Upload and edit**, and the draft appears on the same page to watch or download,
+with the hook, post caption, hashtags and Claude's reason for the pick. Videos are
+edited one at a time in the background; the page refreshes itself when one finishes.
+
+- **Password:** set `APP_PASSWORD`. The browser asks for it once (any username).
+  Without it the page stays locked.
+- Uploads up to `MAX_UPLOAD_MB` (default 2000). Jobs are saved under `DATA_DIR/jobs`,
+  so the list survives a restart.
+- `/health` answers without a password, for Railway's health check.
+
+![Upload page with a finished draft](docs/upload-page.png)
+
 ## Put it on Railway
 
 1. New Railway service from this repo. It builds the `Dockerfile` (ffmpeg, fonts, the
-   Whisper model are baked in).
-2. Add a volume mounted at `/data` (inbox, drafts, work cache, the processed list).
-3. Variables: `ANTHROPIC_API_KEY` (required). Optional: `POLL_MINUTES` (default 30),
-   `MAX_BUDGET_USD` per video (default 2.00), `CLAUDE_MODEL`, `CLAUDE_EFFORT`.
-4. It starts `python -m hub watch`, which checks for new uploads every `POLL_MINUTES`.
+   Whisper model are baked in) and starts the upload page (`python -m hub serve`).
+2. Add a volume mounted at `/data` (uploads, drafts, work cache, job list).
+3. Variables: `ANTHROPIC_API_KEY` and `APP_PASSWORD` (both required). Optional:
+   `MAX_BUDGET_USD` per video (default 2.00), `CLAUDE_MODEL`, `CLAUDE_EFFORT`, `MAX_UPLOAD_MB`.
+4. Settings → Networking → Generate Domain, then open it and upload a video.
 
-Until the Drive connection is built, nothing new arrives in `/data/inbox` on Railway on
-its own, so the first useful step there is the Drive piece below.
+The folder watcher (`python -m hub watch`) is still there for when the Drive
+connection is built; switch the start command to it then.
 
 **Sizing:** rendering is the slow part. On this test machine a 40-second 1080x1920 clip
 took about 70 seconds to encode. Give the service at least 2 vCPU / 2 GB; one video

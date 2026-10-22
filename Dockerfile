@@ -15,9 +15,11 @@ RUN python -c "from faster_whisper import WhisperModel; WhisperModel('${WHISPER_
 
 COPY . .
 
-# Run as a normal user rather than root (safer for a process that runs an AI agent).
-RUN useradd --create-home worker && mkdir -p /data && chown -R worker /app /data
-USER worker
+# Runs as root on purpose: Railway mounts volumes owned by root, and the Whisper
+# model downloaded above lives in root's cache. Claude's tools are locked down in
+# hub/agent.py (no shell, no web), so the agent itself can't use root access.
+RUN mkdir -p /data
 
 ENV PYTHONUNBUFFERED=1 DATA_DIR=/data
-CMD ["python", "-m", "hub", "watch"]
+# Railway sets PORT; the upload page listens on it. Use "watch" instead for the folder watcher.
+CMD ["python", "-m", "hub", "serve"]

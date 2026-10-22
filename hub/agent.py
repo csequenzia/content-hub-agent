@@ -98,8 +98,11 @@ def build_tools(video: Path, client_id: str, work: Path, result: dict):
     return [get_transcript, get_brand_kit, render_draft_tool]
 
 
-async def edit_video(video: Path, client_id: str) -> dict:
-    """Run the agent on one raw video. Returns {"draft": Path, "plan": dict, "summary": str, "cost_usd": float}."""
+async def edit_video(video: Path, client_id: str, log=print) -> dict:
+    """Run the agent on one raw video. Returns {"draft": Path, "plan": dict, "summary": str, "cost_usd": float}.
+
+    `log` receives each thing Claude says along the way (the upload page shows these).
+    """
     if not os.environ.get("ANTHROPIC_API_KEY"):
         raise RuntimeError("ANTHROPIC_API_KEY is not set (see .env.example)")
     video = video.resolve()
@@ -129,7 +132,7 @@ async def edit_video(video: Path, client_id: str) -> dict:
         if isinstance(message, AssistantMessage):
             for block in message.content:
                 if isinstance(block, TextBlock):
-                    print(f"  claude: {block.text}")
+                    log(f"  claude: {block.text}")
                     summary.append(block.text)
         elif isinstance(message, ResultMessage):
             result["cost_usd"] = message.total_cost_usd
