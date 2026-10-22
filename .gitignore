@@ -1,0 +1,15 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+work/
+drafts/*
+!drafts/.gitkeep
+inbox/*
+!inbox/.gitkeep
+*.mp4
+*.mov
+*.m4v
+*.mkv
+*.wav
