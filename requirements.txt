@@ -1,0 +1,5 @@
+# Claude Agent SDK (ships its own Claude Code binary; no Node needed)
+claude-agent-sdk==0.2.171
+# Local speech-to-text with word timestamps, CPU friendly
+faster-whisper==1.2.1
+python-dotenv==1.2.4
