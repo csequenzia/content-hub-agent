@@ -4,6 +4,7 @@ This part needs no API key, so it can be tested on its own with a hand-written p
 """
 
 import json
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -22,6 +23,15 @@ def snap_to_words(transcript: dict, start: float, end: float) -> tuple[float, fl
     new_end = min(after) if after else words[-1]["end"]
     # A little air before the first word and after the last
     return max(0.0, new_start - 0.1), min(transcript["duration"], new_end + 0.3)
+
+
+def folder_name(stem: str) -> str:
+    """The video's name made safe for ffmpeg's filter syntax, which breaks on ' , : [ ] and friends.
+
+    The captions file lives in this folder and goes inside an ffmpeg filter, so a video called
+    "I've coached 7,000 Christians.mp4" would otherwise fail to render.
+    """
+    return re.sub(r"[^A-Za-z0-9 _-]+", "", stem).strip() or "video"
 
 
 def validate_plan(plan: dict, transcript: dict) -> list[str]:
@@ -51,7 +61,7 @@ def render_draft(video: Path, client_id: str, transcript: dict, plan: dict,
     start, end = snap_to_words(transcript, plan["start"], plan["end"])
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
-    folder = drafts_dir / client_id / f"{video.stem}-{stamp}"
+    folder = drafts_dir / client_id / f"{folder_name(video.stem)}-{stamp}"
     words = captions.words_in_range(transcript, start, end)
     ass = captions.write_ass(captions.chunk_words(words), plan["hook"], brand, folder / "captions.ass")
     out = media.render_clip(video, start, end, ass, folder / f"{video.stem} - first draft.mp4",
