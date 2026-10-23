@@ -129,6 +129,7 @@ async def edit_video(video: Path, client_id: str, log=print) -> dict:
         cwd=str(config.ROOT),
         max_turns=config.MAX_AGENT_TURNS,
         max_budget_usd=config.MAX_BUDGET_USD,
+        max_buffer_size=MAX_BUFFER_SIZE,
     )
     prompt = f"New raw video from client '{client_id}': {video.name}. Make the first draft."
 
@@ -158,6 +159,8 @@ async def _run(prompt: str, options: ClaudeAgentOptions, result: dict, log) -> l
         raise RuntimeError(f"agent stopped: {result['error']}")
     return summary
 
+
+MAX_BUFFER_SIZE = 50 * 1024 * 1024  # SDK default is 1 MB; images the agent reads come back inline
 
 COURSE_SKILLS = ["edit-course-lesson", "cut-mistakes"]
 NOT_FOR_REELS = {*COURSE_SKILLS, "cut-silences"}
@@ -326,6 +329,7 @@ async def edit_course(video: Path, client_id: str, log=print) -> dict:
         cwd=str(config.ROOT),
         max_turns=config.COURSE_MAX_TURNS,
         max_budget_usd=config.COURSE_MAX_BUDGET_USD,
+        max_buffer_size=MAX_BUFFER_SIZE,  # Read on a generated image returns it inline, often over 1 MB
     )
     prompt = f"New course lesson from client '{client_id}': {video.name}. Plan the edit."
     summary = await _run(prompt, options, result, log)
