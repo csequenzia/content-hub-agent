@@ -59,4 +59,11 @@ def test_join_clips(tmp_path):
     out = media.join_clips([a, b], tmp_path / "joined.mp4")
     info = media.probe(out)
     assert (info["width"], info["height"]) == (1080, 1920)
-    assert 3.3 < info["duration"] < 3.8 and media.has_audio(out)
+    assert 3.3 < info["duration"] < 3.8 and media.has_stream(out, "a")
+
+    single = media.join_clips([b], tmp_path / "one.mp4")    # a lone WebM take still becomes an MP4 with sound
+    assert media.probe(single)["height"] == 1920 and media.has_stream(single, "a")
+    silent = tmp_path / "sound-only.mp4"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=duration=1", str(silent)], check=True)
+    with pytest.raises(RuntimeError, match="no picture"):
+        media.join_clips([a, silent], tmp_path / "bad.mp4")
