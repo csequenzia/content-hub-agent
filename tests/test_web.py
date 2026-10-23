@@ -136,3 +136,8 @@ def test_unknown_mode_is_rejected(client):
     bad = client.post("/upload", auth=AUTH, data={"client": "sample-clinic", "mode": "movie"},
                       files={"video": ("a.mp4", b"hi", "video/mp4")})
     assert bad.status_code == 400
+
+
+def test_health_shows_live_commit(client, monkeypatch):
+    monkeypatch.setenv("RAILWAY_GIT_COMMIT_SHA", "ceb3621abcdef")
+    assert client.get("/health").json() == {"ok": True, "commit": "ceb3621"}

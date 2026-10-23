@@ -175,7 +175,9 @@ app = FastAPI(title="Content hub agent", lifespan=lifespan, docs_url=None, redoc
 
 @app.get("/health")
 def health():
-    return {"ok": True}
+    # Railway sets RAILWAY_GIT_COMMIT_SHA on GitHub deploys, so anyone can see which code is live
+    commit = os.environ.get("RAILWAY_GIT_COMMIT_SHA", "")[:7] or "unknown"
+    return {"ok": True, "commit": commit}
 
 
 @app.post("/upload", dependencies=[Depends(require_password)])
