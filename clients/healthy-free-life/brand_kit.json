@@ -1,0 +1,29 @@
+{
+  "name": "Healthy Free Life (Katrina Sequenzia)",
+  "client_type": "Christian women's health coach (RN)",
+  "handle": "",
+  "voice": "Warm, plain, direct. Grace over guilt, never preachy. Short sentences. Sounds like a friend talking.",
+  "audience": "Christian women, many over 50, working on weight, energy, cravings and eating God's way.",
+  "offers": [],
+  "story": "RN and health coach who has coached Christians since 2010. She was a Dr Pepper drinking, fast food eating yo-yo dieter until she learned to eat God's way.",
+  "never_say": [
+    "cure",
+    "guaranteed"
+  ],
+  "cta": "",
+  "colors": {
+    "caption": {
+      "fill": "#FFFFFF",
+      "outline": "#000000"
+    },
+    "hook": {
+      "bg": "#2A4020",
+      "fg": "#FFFFFF"
+    }
+  },
+  "fonts": {
+    "heading": "Newsreader",
+    "body": "DM Sans"
+  },
+  "logo": null
+}

@@ -21,6 +21,7 @@ it for approval.
    ID, the Secret Access Key, and your Account ID.
 2. **Let browsers upload.** In the bucket, open **Settings → CORS policy** and add the
    policy below, using your app's address:
+   Add every app that uploads (for example Content Studio's address too).
    ```json
    [{"AllowedOrigins": ["https://your-app.base44.app"], "AllowedMethods": ["PUT", "GET"],
      "AllowedHeaders": ["Content-Type"], "MaxAgeSeconds": 3600}]
@@ -75,6 +76,7 @@ Keep the hook in the filename (for example "Why your knee still hurts.mov"), as 
 ```json
 { "client_id": "sample-clinic",
   "mode": "reel",
+  "hook": "Why your knee still hurts",
   "video_key": "raw/sample-clinic/3f9a1c2b7d10/Why your knee still hurts.mov",
   "external_id": "the app's own id for this video",
   "callback_url": "https://your-app.example/functions/draftReady" }
@@ -82,6 +84,11 @@ Keep the hook in the filename (for example "Why your knee still hurts.mov"), as 
 
 - `mode` is either `"reel"` (a 30-60 second vertical clip) or `"course"` (a full course lesson).
 - Send `video_url` (an https link) and `filename` in place of `video_key` if you are not using R2.
+- Filmed in several takes? Upload each clip (step 1 once per clip) and send `video_keys`
+  (a list, in order) in place of `video_key`. The agent joins them end to end before editing.
+- `hook` (optional) is an on-screen hook the creator already wrote; the agent uses it word for word.
+  `script` (optional) is the script they read from, so the agent keeps the whole thing where it can.
+  Content Studio's teleprompter sends all three.
 - `callback_url` is optional.
 
 Returns `201` with the video's status (shape below). If the upload hasn't finished yet,
