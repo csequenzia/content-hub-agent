@@ -67,3 +67,12 @@ def test_join_clips(tmp_path):
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=duration=1", str(silent)], check=True)
     with pytest.raises(RuntimeError, match="no picture"):
         media.join_clips([a, silent], tmp_path / "bad.mp4")
+
+
+def test_render_survives_punctuation_in_the_video_name(sample_video, transcript, tmp_path):
+    # Content Studio names the upload after the hook, e.g. "I've coached 7,000 Christians"
+    odd = tmp_path / "I've coached 7,000 Christians: [part 1].mp4"
+    odd.write_bytes(sample_video.read_bytes())
+    out = drafts.render_draft(odd, "sample-clinic", transcript, PLAN, drafts_dir=tmp_path / "drafts")
+    assert out.exists()
+    assert out.name == "I've coached 7,000 Christians: [part 1] - first draft.mp4"
