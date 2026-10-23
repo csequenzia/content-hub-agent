@@ -220,3 +220,52 @@ def test_review_only_after_draft(client, monkeypatch):
                         "status": "failed", "created": time.time(), "log": []})
     r = client.post("/api/v1/videos/aaaaaaaaaaaa/review", headers=AUTH, json={"decision": "approved"})
     assert r.status_code == 409 and job is None
+
+
+def test_several_clips_are_joined_with_the_hook(client, with_r2, callbacks, monkeypatch, tmp_path):
+    """Content Studio's teleprompter sends its takes as separate clips, plus the card's hook and script."""
+    seen = {}
+
+    async def fake_edit(video, client_id, log=print, brief=None):
+        seen.update(video=Path(video).read_bytes(), name=Path(video).name, brief=brief)
+        draft = tmp_path / "d" / "x - first draft.mp4"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_bytes(b"DRAFT")
+        return {"draft": draft, "cost_usd": 0.2}
+
+    joined = []
+
+    def fake_join(clips, out):
+        joined.append([Path(c).read_bytes() for c in clips])
+        out.write_bytes(b"".join(joined[-1]))
+        return out
+
+    monkeypatch.setattr(agent, "edit_video", fake_edit)
+    monkeypatch.setattr(api.media, "join_clips", fake_join)
+    keys = []
+    for body in (b"TAKE1", b"TAKE2"):
+        up = client.post("/api/v1/uploads", headers=AUTH, json={
+            "client_id": "sample-clinic", "filename": "clip.mp4", "content_type": "video/mp4"}).json()
+        httpx.put(up["upload_url"], content=body, headers=up["headers"])
+        keys.append(up["video_key"])
+
+    made = client.post("/api/v1/videos", headers=AUTH, json={
+        "client_id": "sample-clinic", "video_keys": keys, "hook": "Why your knee still hurts",
+        "script": "Line one.\n\nLine two."})
+    assert made.status_code == 201 and made.json()["filename"] == "Why your knee still hurts.mp4"
+    wait(client, made.json()["id"], "draft_ready")
+    assert joined == [[b"TAKE1", b"TAKE2"]] and seen["video"] == b"TAKE1TAKE2"
+    assert seen["brief"] == {"hook": "Why your knee still hurts", "script": "Line one.\n\nLine two."}
+
+    def post(body):
+        return client.post("/api/v1/videos", headers=AUTH, json={"client_id": "sample-clinic", **body}).status_code
+
+    assert post({"video_keys": keys, "video_key": keys[0]}) == 400       # two sources
+    assert post({"video_keys": ["raw/other/0123456789ab/a.mp4"]}) == 400  # someone else's key
+    assert post({"video_keys": keys[:1] + ["raw/sample-clinic/0123456789ab/missing.mp4"]}) == 409
+
+
+def test_brief_goes_into_the_prompt():
+    text = agent.brief_prompt({"hook": "Eat God's way", "script": "Hi friend."})
+    assert '"Eat God\'s way"' in text and "Hi friend." in text and "word for word" in text
+    assert agent.brief_prompt(None) == ""

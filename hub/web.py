@@ -32,7 +32,7 @@ from . import config
 JOBS_DIR = config.DATA_DIR / "jobs"
 UPLOADS_DIR = config.DATA_DIR / "uploads"
 MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "2000"))
-VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".mkv"}
+VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".mkv", ".webm"}   # .webm: phone browsers that record clips that way
 JOB_ID = re.compile(r"^[0-9a-f]{12}$")
 MODES = {"reel": "Reel (30-60s vertical clip)", "course": "Course lesson (full lesson, Katrina's course style)"}
 
@@ -123,8 +123,11 @@ def run_job(job_id: str) -> None:
         if job.get("source"):          # sent through the API: fetch it from R2 or the app's link first
             log("Fetching the video")
             api.fetch_source(job)
-        edit = edit_course if job.get("mode") == "course" else edit_video
-        result = asyncio.run(edit(Path(job["video"]), job["client"], log=log))
+        if job.get("mode") == "course":
+            result = asyncio.run(edit_course(Path(job["video"]), job["client"], log=log))
+        else:
+            brief = {"brief": job["brief"]} if job.get("brief") else {}
+            result = asyncio.run(edit_video(Path(job["video"]), job["client"], log=log, **brief))
         draft = Path(result["draft"])
         if job.get("mode") == "course":
             extra = {"course": {k: result.get(k) for k in ("note", "cuts", "images")}}

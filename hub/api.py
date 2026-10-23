@@ -5,7 +5,7 @@ Call it from the app's server side (a Base44 backend function), never from brows
 so the token stays secret. docs/API.md has the full walkthrough.
 
   POST /api/v1/uploads              get a link to put a raw video straight into R2
-  POST /api/v1/videos               "new video": queue an edit (from R2, or from a file URL)
+  POST /api/v1/videos               "new video": queue an edit (from R2, several R2 clips, or a file URL)
   GET  /api/v1/videos/{id}          status, and the draft link once it is ready
   GET  /api/v1/videos?client_id=    list
   POST /api/v1/videos/{id}/review   approve, or ask for changes
@@ -30,13 +30,14 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from . import web
+from . import media, web
 from .integrations import r2
 
 router = APIRouter(prefix="/api/v1")
 
 STATUS = {"queued": "ready_to_edit", "working": "editing", "done": "draft_ready", "failed": "failed"}
 KEY = re.compile(r"^raw/[\w\-]+/[0-9a-f]{12}/[^/]+$")
+MAX_CLIPS = 20
 
 
 def require_token(authorization: str = Header("")) -> None:
@@ -72,10 +73,13 @@ class NewVideo(BaseModel):
     client_id: str
     mode: Literal["reel", "course"] = "reel"
     video_key: str | None = Field(None, description="Key from POST /uploads, after the upload finished")
+    video_keys: list[str] | None = Field(None, description="Or several uploaded clips, in order; they are joined into one video")
     video_url: str | None = Field(None, description="Or an https link to the file (fine for small files)")
     filename: str | None = Field(None, description="Needed with video_url")
     external_id: str | None = Field(None, description="The app's own id for this video, echoed back")
     callback_url: str | None = Field(None, description="https URL we POST to when the draft is ready or failed")
+    hook: str | None = Field(None, description="The on-screen hook the creator already wrote; the agent uses it")
+    script: str | None = Field(None, description="The script the creator read, if they filmed from one")
 
 
 class Review(BaseModel):
@@ -99,24 +103,36 @@ def new_upload(req: UploadRequest):
 @router.post("/videos", status_code=201, dependencies=[Depends(require_token)])
 def new_video(req: NewVideo):
     _client_ok(req.client_id)
-    if bool(req.video_key) == bool(req.video_url):
-        raise HTTPException(400, "Send exactly one of video_key or video_url")
+    if sum(map(bool, (req.video_key, req.video_keys, req.video_url))) != 1:
+        raise HTTPException(400, "Send exactly one of video_key, video_keys or video_url")
     for url in (req.video_url, req.callback_url):
         if url and not url.startswith("https://"):
             raise HTTPException(400, "Links must start with https://")
 
-    if req.video_key:
-        if not KEY.match(req.video_key) or not req.video_key.startswith(f"raw/{req.client_id}/"):
-            raise HTTPException(400, "video_key must be one returned by POST /uploads for this client")
+    if req.video_key or req.video_keys:
+        keys = [req.video_key] if req.video_key else req.video_keys
+        if len(keys) > MAX_CLIPS:
+            raise HTTPException(400, f"Send at most {MAX_CLIPS} clips")
+        for key in keys:
+            if not KEY.match(key) or not key.startswith(f"raw/{req.client_id}/"):
+                raise HTTPException(400, "Each video key must be one returned by POST /uploads for this client")
         if not r2.configured():
             raise HTTPException(503, "R2 storage is not set up")
-        stored = r2.size(req.video_key)
-        if not stored:
-            raise HTTPException(409, "Nothing is uploaded at video_key yet. Finish the upload first.")
-        if stored > web.MAX_UPLOAD_MB * 1024 * 1024:
+        total = 0
+        for key in keys:
+            stored = r2.size(key)
+            if not stored:
+                raise HTTPException(409, f"Nothing is uploaded at {key} yet. Finish the upload first.")
+            total += stored
+        if total > web.MAX_UPLOAD_MB * 1024 * 1024:
             raise HTTPException(413, f"Video is over {web.MAX_UPLOAD_MB} MB")
-        filename = req.video_key.rsplit("/", 1)[1]
-        source = {"r2_key": req.video_key}
+        if req.video_key:
+            filename = req.video_key.rsplit("/", 1)[1]
+            source = {"r2_key": req.video_key}
+        else:
+            # Joined clips become one .mp4, named after the hook like Greg's other pipelines.
+            filename = web.safe_filename(f"{req.hook or Path(keys[0]).stem}.mp4")
+            source = {"r2_keys": keys}
     else:
         filename = _video_name(req.filename or Path(req.video_url.split("?")[0]).name)
         source = {"url": req.video_url}
@@ -126,6 +142,8 @@ def new_video(req: NewVideo):
            "video": str(web.UPLOADS_DIR / job_id / filename), "source": source,
            "external_id": req.external_id, "callback_url": req.callback_url, "via": "api",
            "status": "queued", "created": time.time(), "log": []}
+    if req.hook or req.script:
+        job["brief"] = {"hook": req.hook, "script": req.script}
     web.save_job(job)
     web.enqueue(job_id)
     return describe(job)
@@ -199,6 +217,10 @@ def fetch_source(job: dict) -> Path:
     source = job.get("source") or {}
     if "r2_key" in source:
         return r2.download(source["r2_key"], dest)
+    if "r2_keys" in source:
+        clips = [r2.download(key, dest.parent / "clips" / f"{i:02d}-{key.rsplit('/', 1)[1]}")
+                 for i, key in enumerate(source["r2_keys"])]
+        return media.join_clips(clips, dest)
     if "url" in source:
         dest.parent.mkdir(parents=True, exist_ok=True)
         limit = web.MAX_UPLOAD_MB * 1024 * 1024

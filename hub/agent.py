@@ -103,10 +103,26 @@ def build_tools(video: Path, client_id: str, work: Path, result: dict):
     return [get_transcript, get_brand_kit, render_draft_tool]
 
 
-async def edit_video(video: Path, client_id: str, log=print) -> dict:
+def brief_prompt(brief: dict | None) -> str:
+    """What the creator already decided, for videos filmed from a script (Content Studio's teleprompter)."""
+    if not brief:
+        return ""
+    lines = []
+    if brief.get("script"):
+        lines.append("They filmed this from a script on a teleprompter, possibly in several takes joined "
+                     "end to end. Keep as much of the script as fits the length limit, starting from its "
+                     "first line. Here is the script they read:\n" + brief["script"].strip())
+    if brief.get("hook"):
+        lines.append(f'They already wrote the on-screen hook: "{brief["hook"].strip()}". Use it word for word '
+                     "as the hook in render_draft. Only if it is over 70 characters, shorten it and keep their words.")
+    return "\n\n" + "\n\n".join(lines)
+
+
+async def edit_video(video: Path, client_id: str, log=print, brief: dict | None = None) -> dict:
     """Run the agent on one raw video. Returns {"draft": Path, "plan": dict, "summary": str, "cost_usd": float}.
 
     `log` receives each thing Claude says along the way (the upload page shows these).
+    `brief` is what the creator already decided: {"hook": ..., "script": ...} (both optional).
     """
     if not os.environ.get("ANTHROPIC_API_KEY"):
         raise RuntimeError("ANTHROPIC_API_KEY is not set (see .env.example)")
@@ -131,7 +147,7 @@ async def edit_video(video: Path, client_id: str, log=print) -> dict:
         max_budget_usd=config.MAX_BUDGET_USD,
         max_buffer_size=MAX_BUFFER_SIZE,
     )
-    prompt = f"New raw video from client '{client_id}': {video.name}. Make the first draft."
+    prompt = f"New raw video from client '{client_id}': {video.name}. Make the first draft." + brief_prompt(brief)
 
     summary = await _run(prompt, options, result, log)
     if "draft" not in result:

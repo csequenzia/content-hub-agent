@@ -38,3 +38,32 @@ def test_bad_plan_is_rejected_before_rendering(sample_video, transcript, tmp_dir
     with pytest.raises(ValueError):
         drafts.render_draft(sample_video, "sample-clinic", transcript, {**PLAN, "end": 10.0})
     assert not (tmp_dirs / "drafts").exists()
+
+
+def test_join_clips(tmp_path):
+    import shutil
+    import subprocess
+
+    import pytest
+
+    from hub import media
+    if not shutil.which("ffmpeg"):
+        pytest.skip("ffmpeg not installed")
+    a, b = tmp_path / "a.mp4", tmp_path / "b.webm"
+    # a portrait take with sound, then a landscape take with no sound (camera flipped, say)
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=s=360x640:r=30:d=2",
+                    "-f", "lavfi", "-i", "sine=duration=2", "-c:v", "libx264", "-preset", "ultrafast",
+                    "-c:a", "aac", "-shortest", str(a)], check=True)
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=s=640x360:r=24:d=1.5",
+                    "-c:v", "libvpx", "-deadline", "realtime", str(b)], check=True)
+    out = media.join_clips([a, b], tmp_path / "joined.mp4")
+    info = media.probe(out)
+    assert (info["width"], info["height"]) == (1080, 1920)
+    assert 3.3 < info["duration"] < 3.8 and media.has_stream(out, "a")
+
+    single = media.join_clips([b], tmp_path / "one.mp4")    # a lone WebM take still becomes an MP4 with sound
+    assert media.probe(single)["height"] == 1920 and media.has_stream(single, "a")
+    silent = tmp_path / "sound-only.mp4"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=duration=1", str(silent)], check=True)
+    with pytest.raises(RuntimeError, match="no picture"):
+        media.join_clips([a, silent], tmp_path / "bad.mp4")
