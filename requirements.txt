@@ -8,3 +8,5 @@ python-dotenv==1.2.4
 fastapi==0.161.1
 uvicorn==0.54.0
 python-multipart==0.0.32
+# Cloudflare R2 storage for the app API (S3-compatible)
+boto3==1.40.40

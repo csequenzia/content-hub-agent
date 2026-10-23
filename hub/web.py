@@ -104,7 +104,12 @@ def safe_filename(name: str) -> str:
 
 # ---------- the background worker: one video at a time ----------
 
+def enqueue(job_id: str) -> None:
+    _queue.put(job_id)
+
+
 def run_job(job_id: str) -> None:
+    from . import api
     from .agent import edit_course, edit_video  # late import: the page loads even if the SDK has a problem
 
     job = update_job(job_id, status="working", started=time.time())
@@ -115,20 +120,24 @@ def run_job(job_id: str) -> None:
         update_job(job_id, log=log_lines[-20:])
 
     try:
+        if job.get("source"):          # sent through the API: fetch it from R2 or the app's link first
+            log("Fetching the video")
+            api.fetch_source(job)
         edit = edit_course if job.get("mode") == "course" else edit_video
         result = asyncio.run(edit(Path(job["video"]), job["client"], log=log))
         draft = Path(result["draft"])
         if job.get("mode") == "course":
-            update_job(job_id, status="done", draft=str(draft), cost_usd=result.get("cost_usd"),
-                       course={k: result.get(k) for k in ("note", "cuts", "images")}, finished=time.time())
-            return
-        post_file = draft.parent / "post.json"
-        post = json.loads(post_file.read_text()) if post_file.exists() else {}
-        update_job(job_id, status="done", draft=str(draft), post=post,
-                   cost_usd=result.get("cost_usd"), finished=time.time())
+            extra = {"course": {k: result.get(k) for k in ("note", "cuts", "images")}}
+        else:
+            post_file = draft.parent / "post.json"
+            extra = {"post": json.loads(post_file.read_text()) if post_file.exists() else {}}
+        extra.update(api.publish_draft({**job, "draft": str(draft)}))
+        job = update_job(job_id, status="done", draft=str(draft), cost_usd=result.get("cost_usd"),
+                         finished=time.time(), **extra)
     except Exception as err:
         traceback.print_exc()
-        update_job(job_id, status="failed", error=str(err)[:1500], finished=time.time())
+        job = update_job(job_id, status="failed", error=str(err)[:1500], finished=time.time())
+    api.send_callback(job)
 
 
 def _worker() -> None:
@@ -192,7 +201,7 @@ def upload(video: UploadFile = File(...), client: str = Form(...), mode: str = F
 
     save_job({"id": job_id, "client": client, "mode": mode, "filename": filename, "video": str(dest),
               "status": "queued", "created": time.time(), "log": []})
-    _queue.put(job_id)
+    enqueue(job_id)
     return RedirectResponse("/", status_code=303)
 
 
@@ -232,6 +241,9 @@ def _job_card(job: dict) -> str:
                else "Editing… (usually 3-10 minutes)")
     label = {"queued": "Waiting its turn", "working": working,
              "done": "Draft ready", "failed": "Something went wrong"}.get(status, status)
+    review = (job.get("review") or {}).get("status")
+    if status == "done" and review:
+        label = {"approved": "Approved", "changes_requested": "Changes requested"}.get(review, review)
     body = ""
     if status == "done" and is_course:
         info = job.get("course") or {}
@@ -267,7 +279,7 @@ def _job_card(job: dict) -> str:
     return f"""
     <section class="job {status}">
       <h3>{e(job['filename'])}</h3>
-      <p class="meta"><span class="status">{label}</span> · {"Course lesson" if is_course else "Reel"} · {e(job['client'])} · uploaded {when}</p>
+      <p class="meta"><span class="status">{label}</span> · {"Course lesson" if is_course else "Reel"} · {e(job['client'])}{" · from the app" if job.get("via") == "api" else ""} · uploaded {when}</p>
       {body}
     </section>"""
 
@@ -345,3 +357,7 @@ PAGE = """<!doctype html>
 </script>
 </body></html>
 """
+
+
+# The app-facing API. hub/api.py adds its routes to `app`; imported last because it uses the job store above.
+from . import api  # noqa: E402,F401

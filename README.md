@@ -27,6 +27,19 @@ client's color, logo top-right, 3-word captions low on screen.)*
 
 Nothing is posted anywhere. Every draft waits for a person.
 
+## Connecting an app (Base44 now, an internal app later)
+
+Apps send videos through a small API, so Google Drive isn't needed. The app asks for an
+upload link, and the uploader's browser puts the raw video straight into Cloudflare R2
+storage, which skips Base44's 100 MB upload limit. The app then says "new video" with the
+client and the kind of edit, and reads the status back:
+**Ready to edit → Editing → Draft ready → Approved** (or *Changes requested*). It can poll,
+or give a callback link to be told when the draft is ready. Drafts are saved back to R2,
+and the app gets a download link for each one. Every call needs `HUB_API_TOKEN`.
+
+[docs/API.md](docs/API.md) has the setup, every call, and a Base44 backend-function example.
+Videos sent this way also show up on the upload page, marked "from the app".
+
 ## Course lessons (Katrina's course edit skill)
 
 Pick **Course lesson** on the upload page. This runs Katrina's `edit-course-lesson`
@@ -92,10 +105,11 @@ hub/
   media.py          ffmpeg: probe, extract audio, cut + crop + burn + logo
   brand.py          loads clients/<id>/brand_kit.json
   watcher.py        the trigger: checks inbox/<client>/ for new videos
-  web.py            password-protected upload page for testing
+  web.py            password-protected upload page for testing, and the job queue
+  api.py            the app API: upload links, new video, status, review, callbacks
   course.py         course lessons: runs the kit's cut / build / render scripts
   higgsfield.py     image aids for course lessons (Higgsfield API)
-  integrations/     STUBS for Google Drive, R2, GHL, Base44, notifications
+  integrations/     r2.py is real (app uploads and drafts); Drive, GHL, Base44, notify are STUBS
 clients/sample-clinic/   a made-up client: brand_kit.json + logo.png
 .claude/skills/          skills the agent loads (Greg's go here; see its README).
                          edit-course-lesson, cut-silences, cut-mistakes are Katrina's.
@@ -128,7 +142,7 @@ Without an API key you can still:
 ```sh
 python -m hub transcribe some-video.mp4                    # see the transcript
 python -m hub render some-video.mp4 --client sample-clinic --plan plan.json
-pytest                                                     # 34 tests; the course end-to-end test skips without Node/ffmpeg 7
+pytest                                                     # 41 tests; the course end-to-end test skips without Node/ffmpeg 7
 HUB_TEST_RENDER=1 pytest tests/test_course.py              # also renders a course lesson with HyperFrames
 ```
 
@@ -161,6 +175,8 @@ edited one at a time in the background; the page refreshes itself when one finis
    For course lesson images: `HIGGSFIELD_API_KEY` as `<key id>:<key secret>` (from
    Higgsfield's API keys page). Course tuning: `COURSE_MAX_BUDGET_USD` (default 5.00),
    `MAX_COURSE_IMAGES` (default 10).
+   For an app to send videos: `HUB_API_TOKEN` (a long random password the app keeps
+   secret) and the four `R2_*` variables. See [docs/API.md](docs/API.md).
 4. Settings → Networking → Generate Domain, then open it and upload a video.
 
 The folder watcher (`python -m hub watch`) is still there for when the Drive
@@ -176,7 +192,6 @@ at a time is fine for a pilot. Course lessons render in Chrome and want more: 4 
 | File | Will do | Needs |
 | --- | --- | --- |
 | `integrations/drive.py` | Pull new files from each client's "upload your videos here" folder (created by Greg's Base44 app in "SSHC client videos"), push drafts back to a "first draft" folder, sync brand kits | Google service account with access to that folder |
-| `integrations/r2.py` | Store raw and finished video once it outgrows Drive | Cloudflare R2 bucket + keys |
 | `integrations/ghl.py` | Text/email the client that a draft is ready; later schedule approved posts | GHL private integration token |
 | `integrations/base44.py` | Read clients and brand kits from Base44, write draft status back for the approval screen | Base44 API key |
 | `integrations/notify.py` | Tell someone a draft is ready | One of the above |
@@ -200,10 +215,16 @@ Tested here (no API key):
   (apt packages could not be fetched on this test machine, so ffmpeg and Chromium
   inside the image were not run here).
 
+- The app API end to end with R2 played by a local S3 server (moto): upload link, a
+  real PUT of the file, new video, the edit (with a stand-in agent), the draft saved to
+  storage and downloaded from its link, the signed callback, and approval. Also tested:
+  the `video_url` route without R2, failures, and rejected requests.
+
 **Not tested yet:**
 - Real transcription: this test machine cannot download the Whisper model. The Docker
   build downloads it, so the first Railway build is the first real transcription.
 - Real client footage, and whether the clips it picks are ones Greg would pick.
+- A real Cloudflare R2 bucket, and calls from Base44 itself.
 - A live Higgsfield call (no Higgsfield API key here), and how Recraft images compare
   with the GPT Image ones Katrina gets in Claude Code.
 
