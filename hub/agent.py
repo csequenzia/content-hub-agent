@@ -51,6 +51,11 @@ Work in this order:
    voice, ending with the client's call to action if they have one).
 5. Call render_draft once. If it returns a problem, fix the plan and call it again.
 
+This runs unattended: nobody can answer a question, re-upload or re-film before the draft
+exists. Never ask and never stop without calling render_draft. If the footage looks cut
+short, misses part of a script, or is shorter than the target length, edit the best draft
+you can from what is there and say what is missing in `why` so the reviewer can re-film.
+
 Never use anything on the client's never-say list. Never make medical claims the
 speaker did not make. When you finish, reply with two sentences: what you picked and why.
 """
@@ -111,7 +116,8 @@ def brief_prompt(brief: dict | None) -> str:
     if brief.get("script"):
         lines.append("They filmed this from a script on a teleprompter, possibly in several takes joined "
                      "end to end. Keep as much of the script as fits the length limit, starting from its "
-                     "first line. Here is the script they read:\n" + brief["script"].strip())
+                     "first line. If the recording covers only part of the script, edit the part that was "
+                     "filmed; don't wait for the rest. Here is the script they read:\n" + brief["script"].strip())
     if brief.get("hook"):
         lines.append(f'They already wrote the on-screen hook: "{brief["hook"].strip()}". Use it word for word '
                      "as the hook in render_draft. Only if it is over 70 characters, shorten it and keep their words.")
