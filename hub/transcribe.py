@@ -7,7 +7,10 @@ Railway box. Results are cached as work/<video>/transcript.json.
 """
 
 import json
+import wave
 from pathlib import Path
+
+import numpy as np
 
 from . import config
 from .media import extract_audio
@@ -21,9 +24,9 @@ def transcribe(video: Path, work: Path) -> dict:
 
     from faster_whisper import WhisperModel  # imported late: heavy, and tests don't need it
 
-    audio = extract_audio(video, work / "audio.wav")
+    audio = load_wav(extract_audio(video, work / "audio.wav"))
     model = WhisperModel(config.WHISPER_MODEL, device="cpu", compute_type=config.WHISPER_COMPUTE_TYPE)
-    segments, info = model.transcribe(str(audio), word_timestamps=True, vad_filter=True)
+    segments, info = model.transcribe(audio, word_timestamps=True, vad_filter=True)
     out = {"duration": info.duration, "segments": []}
     for seg in segments:
         out["segments"].append({
@@ -38,6 +41,19 @@ def transcribe(video: Path, work: Path) -> dict:
     work.mkdir(parents=True, exist_ok=True)
     cache.write_text(json.dumps(out, indent=2))
     return out
+
+
+def load_wav(path: Path) -> np.ndarray:
+    """Read the 16 kHz mono WAV that ffmpeg made into the float array Whisper expects.
+
+    We decode with ffmpeg ourselves instead of letting faster-whisper do it, because its
+    decoder (PyAV) broke in av 19: open() no longer takes `metadata_errors`.
+    """
+    with wave.open(str(path), "rb") as wav:
+        if (wav.getnchannels(), wav.getsampwidth(), wav.getframerate()) != (1, 2, 16000):
+            raise ValueError(f"{path} is not 16 kHz mono 16-bit audio; delete it to re-extract")
+        pcm = wav.readframes(wav.getnframes())
+    return np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
 
 
 def as_numbered_text(transcript: dict) -> str:

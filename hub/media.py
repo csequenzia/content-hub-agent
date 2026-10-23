@@ -38,7 +38,7 @@ def extract_audio(video: Path, out: Path) -> Path:
     if out.exists():
         return out
     out.parent.mkdir(parents=True, exist_ok=True)
-    run(["ffmpeg", "-y", "-v", "error", "-i", str(video), "-vn", "-ac", "1", "-ar", "16000", str(out)])
+    run(["ffmpeg", "-y", "-v", "error", "-i", str(video), "-vn", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", str(out)])
     return out
 
 
