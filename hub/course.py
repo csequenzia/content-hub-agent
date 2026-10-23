@@ -229,5 +229,9 @@ def render(project: Path, quality: str = "draft") -> Path:
     run(["hyperframes", "lint"], cwd=project)
     run(["node", PREFLIGHT, "."], cwd=project)
     out = project / "renders" / f"{project.name.rsplit('-', 2)[0]} - course {quality}.mp4"
-    run(["hyperframes", "render", "--quality", quality, "--output", out, "--quiet"], cwd=project)
+    # Railway shows the container every host CPU, so "auto" workers start too many browsers and
+    # frame capture times out. Cap them, and give each capture call more time.
+    run(["hyperframes", "render", "--quality", quality, "--output", out, "--quiet",
+         "--workers", os.environ.get("RENDER_WORKERS", "4"),
+         "--protocol-timeout", os.environ.get("RENDER_PROTOCOL_TIMEOUT_MS", "900000")], cwd=project)
     return out
