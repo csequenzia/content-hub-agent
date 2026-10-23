@@ -164,7 +164,7 @@ def upload(video: UploadFile = File(...), client: str = Form(...)):
     if client not in list_clients():
         raise HTTPException(400, f"Unknown client '{client}'")
     filename = safe_filename(video.filename)
-    if Path(filename).suffix not in VIDEO_EXTS:
+    if Path(filename).suffix.lower() not in VIDEO_EXTS:  # .MP4 / .MOV from phones and cameras are fine
         raise HTTPException(400, "Please upload an .mp4, .mov, .m4v or .mkv video")
 
     job_id = uuid.uuid4().hex[:12]
@@ -279,8 +279,8 @@ PAGE = """<!doctype html>
   <form id="upload" method="post" action="/upload" enctype="multipart/form-data">
     <label for="client">Client brand kit</label>
     <select id="client" name="client">{options}</select>
-    <label for="video">Video (.mp4 or .mov, up to {max_mb} MB)</label>
-    <input id="video" name="video" type="file" accept="video/*,.mov,.mp4,.m4v,.mkv" required>
+    <label for="video">Video (.mp4 or .mov, any capitalization, up to {max_mb} MB)</label>
+    <input id="video" name="video" type="file" accept="video/*,.mov,.mp4,.m4v,.mkv,.MOV,.MP4,.M4V,.MKV" required>
     <p class="muted">Tip: name the file after the hook, like "Why your knee still hurts.mov".</p>
     <button id="go" type="submit">Upload and edit</button>
     <progress id="bar" max="100" value="0" hidden></progress>

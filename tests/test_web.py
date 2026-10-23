@@ -69,6 +69,19 @@ def test_upload_runs_and_shows_draft(client):
     assert "attachment" in video.headers["content-disposition"]
 
 
+@pytest.mark.parametrize("name", ["Podcast_multicam_v3.MP4", "IMG_1234.MOV", "clip.Mov"])
+def test_uppercase_extensions_are_accepted(client, name):
+    r = client.post("/upload", auth=AUTH, data={"client": "sample-clinic"},
+                    files={"video": (name, b"raw", "video/mp4")}, follow_redirects=False)
+    assert r.status_code == 303
+    wait_for(client, "done")
+
+
+def test_picker_offers_uppercase_extensions(client):
+    page = client.get("/", auth=AUTH).text
+    assert ".MP4" in page and ".MOV" in page
+
+
 def test_rejects_non_video_and_unknown_client(client):
     bad = client.post("/upload", auth=AUTH, data={"client": "sample-clinic"},
                       files={"video": ("notes.txt", b"hi", "text/plain")})
