@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Camera Quality Test</title>
+<style>
+  /* Full-screen camera with a teleprompter strip on top and controls along the bottom. */
+  :root { --ink:#fff; --dim:rgba(255,255,255,.7); --panel:rgba(0,0,0,.55); --rec:#d13c5b; --ok:#9db878; }
+  * { box-sizing:border-box; }
+  html, body { height:100%; margin:0; background:#000; color:var(--ink); font:16px/1.4 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
+  video { position:fixed; inset:0; width:100%; height:100%; object-fit:cover; background:#000; }
+  video.mirror { transform:scaleX(-1); }
+  .prompter { position:fixed; left:0; right:0; top:0; height:34%; overflow:hidden; background:var(--panel);
+    padding:calc(env(safe-area-inset-top,0px) + 12px) max(16px,env(safe-area-inset-right,0px)) 12px max(16px,env(safe-area-inset-left,0px)); }
+  .prompter p { margin:0; font-size:var(--fs,28px); line-height:1.35; font-weight:600; white-space:pre-wrap; will-change:transform; }
+  .bar { position:fixed; left:0; right:0; bottom:0; background:var(--panel); display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:center;
+    padding:10px max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 10px) max(16px,env(safe-area-inset-left,0px)); }
+  button, select { font:inherit; color:var(--ink); background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.3); border-radius:999px; padding:8px 14px; }
+  button.rec { background:var(--rec); border-color:var(--rec); font-weight:700; min-width:96px; }
+  button:disabled { opacity:.4; }
+  .stats { position:fixed; right:max(12px,env(safe-area-inset-right,0px)); top:36%; background:var(--panel); border-radius:10px; padding:8px 10px; font-size:13px; font-variant-numeric:tabular-nums; max-width:70%; }
+  .stats b { color:var(--ok); }
+  .result { position:fixed; left:max(12px,env(safe-area-inset-left,0px)); right:max(12px,env(safe-area-inset-right,0px)); bottom:calc(env(safe-area-inset-bottom,0px) + 120px);
+    background:var(--panel); border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:8px; }
+  .result a { color:var(--ok); font-weight:700; }
+  .err { position:fixed; inset:auto 16px 50% 16px; background:var(--rec); border-radius:12px; padding:14px; }
+</style>
+</head>
+<body>
+<video id="v" playsinline muted autoplay class="mirror"></video>
+<div class="prompter" id="prompter"><p id="script">This is a camera quality test. Read this out loud at your normal pace. Hi, I'm Katrina from Healthy Free Life. Today I want to talk about why protein matters so much when you're trying to feel full after a meal. Your body is always looking for it. When you get enough, cravings settle down. Tap the script to edit it.</p></div>
+<div class="stats" id="stats">Starting camera…</div>
+<div class="result" id="result" hidden></div>
+<div class="err" id="err" hidden></div>
+<div class="bar">
+  <button id="flip" type="button">Flip camera</button>
+  <select id="speed" aria-label="Scroll speed"><option value="0">Scroll off</option><option value="20">Slow</option><option value="35" selected>Medium</option><option value="55">Fast</option></select>
+  <select id="size" aria-label="Text size"><option value="22">Small text</option><option value="28" selected>Medium text</option><option value="36">Large text</option></select>
+  <button id="rec" class="rec" type="button" disabled>Record</button>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const v = $('v'), statsEl = $('stats'), recBtn = $('rec');
+let stream = null, facing = 'user', recorder = null, chunks = [], startedAt = 0, scrollY = 0, scrolling = false, lastT = 0;
+
+function pickType() {
+  const types = ['video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4', 'video/webm;codecs=h264,opus', 'video/webm;codecs=vp9,opus', 'video/webm'];
+  return types.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || '';
+}
+
+async function start() {
+  $('err').hidden = true;
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: facing, width: { ideal: 3840 }, height: { ideal: 2160 }, frameRate: { ideal: 30 } },
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true }
+    });
+  } catch (e) {
+    $('err').textContent = 'The camera did not open: ' + (e.message || e.name) + '. Allow camera and microphone for this page in your browser settings, then reload.';
+    $('err').hidden = false; statsEl.textContent = 'No camera'; return;
+  }
+  v.srcObject = stream;
+  v.classList.toggle('mirror', facing === 'user');
+  const s = stream.getVideoTracks()[0].getSettings();
+  statsEl.innerHTML = `Camera gives: <b>${s.width}×${s.height}</b> at <b>${Math.round(s.frameRate || 0)} fps</b><br>Format: ${pickType() || 'browser default'}`;
+  recBtn.disabled = false;
+}
+
+function toggleRec() {
+  if (recorder && recorder.state === 'recording') { recorder.stop(); return; }
+  chunks = [];
+  const type = pickType();
+  recorder = new MediaRecorder(stream, { ...(type ? { mimeType: type } : {}), videoBitsPerSecond: 40000000, audioBitsPerSecond: 192000 });
+  recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
+  recorder.onstop = done;
+  recorder.start(1000);
+  startedAt = performance.now();
+  recBtn.textContent = 'Stop';
+  $('result').hidden = true;
+  scrollY = 0; scrolling = true; lastT = 0; requestAnimationFrame(tick);
+}
+
+function done() {
+  scrolling = false;
+  recBtn.textContent = 'Record';
+  const secs = (performance.now() - startedAt) / 1000;
+  const blob = new Blob(chunks, { type: recorder.mimeType || 'video/mp4' });
+  const ext = (recorder.mimeType || '').includes('mp4') ? 'mp4' : 'webm';
+  const mbps = (blob.size * 8 / secs / 1e6).toFixed(1);
+  const s = stream.getVideoTracks()[0].getSettings();
+  const url = URL.createObjectURL(blob);
+  const name = `browser-test-${s.width}x${s.height}.${ext}`;
+  $('result').innerHTML = `<div><b>${secs.toFixed(0)} seconds</b> · ${(blob.size / 1e6).toFixed(1)} MB · about <b>${mbps} Mbps</b> · ${s.width}×${s.height}</div>
+    <a href="${url}" download="${name}">Save the video</a>
+    <span style="font-size:13px;color:var(--dim)">On iPhone: tap Save, then Share → Save Video. Send me these numbers too.</span>`;
+  $('result').hidden = false;
+}
+
+function tick(t) {
+  if (!scrolling) return;
+  if (lastT) scrollY += (+$('speed').value) * (t - lastT) / 1000;
+  lastT = t;
+  $('script').style.transform = `translateY(${-scrollY}px)`;
+  requestAnimationFrame(tick);
+}
+
+$('flip').onclick = () => { if (recorder && recorder.state === 'recording') return; facing = facing === 'user' ? 'environment' : 'user'; start(); };
+$('size').onchange = e => document.documentElement.style.setProperty('--fs', e.target.value + 'px');
+recBtn.onclick = toggleRec;
+$('script').onclick = () => { if (scrolling) return; $('script').contentEditable = 'true'; $('script').focus(); };
+$('script').onblur = () => { $('script').contentEditable = 'false'; };
+start();
+</script>
+</body>
+</html>

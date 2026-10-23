@@ -221,6 +221,12 @@ def job_video(job_id: str, download: int = 0):
     return FileResponse(path, media_type="video/mp4")
 
 
+@app.get("/camera-test", response_class=HTMLResponse, dependencies=[Depends(require_password)])
+def camera_test():
+    """Phone camera + teleprompter test page, to compare browser recording quality with the camera app."""
+    return HTMLResponse((Path(__file__).parent / "static" / "camera-test.html").read_text())
+
+
 @app.get("/", response_class=HTMLResponse, dependencies=[Depends(require_password)])
 def home():
     clients = list_clients()
