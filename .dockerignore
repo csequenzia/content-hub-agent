@@ -1,0 +1,9 @@
+.git
+.env
+.venv
+node_modules
+work
+drafts/*
+inbox/*
+**/__pycache__
+.pytest_cache

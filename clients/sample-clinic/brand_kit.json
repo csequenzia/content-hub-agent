@@ -1,0 +1,34 @@
+{
+  "name": "Sample Clinic (made-up client for testing)",
+  "client_type": "physical therapist",
+  "handle": "@sampleclinic.pt",
+  "voice": "Warm, direct, a little funny. Talks like a PT friend, not a textbook. Short sentences. Uses 'you' a lot.",
+  "audience": "Active adults 35-60 with nagging knee, back or shoulder pain who have been told to just rest.",
+  "offers": [
+    "Free 15-minute discovery call",
+    "6-week return-to-running program"
+  ],
+  "story": "Former college runner who rehabbed her own ACL and started a cash-based clinic so patients get a full hour.",
+  "never_say": [
+    "cure",
+    "guaranteed",
+    "pain-free forever",
+    "insurance won't cover you"
+  ],
+  "cta": "Comment \"KNEE\" and I'll send you the free guide.",
+  "colors": {
+    "caption": {
+      "fill": "#FFFFFF",
+      "outline": "#000000"
+    },
+    "hook": {
+      "bg": "#1F4E79",
+      "fg": "#FFFFFF"
+    }
+  },
+  "fonts": {
+    "heading": "Montserrat",
+    "body": "Open Sans"
+  },
+  "logo": null
+}

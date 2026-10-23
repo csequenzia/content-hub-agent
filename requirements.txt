@@ -1,0 +1,12 @@
+# Claude Agent SDK (ships its own Claude Code binary; no Node needed)
+claude-agent-sdk==0.2.171
+# Local speech-to-text with word timestamps, CPU friendly
+faster-whisper==1.2.1
+numpy<3
+python-dotenv==1.2.4
+# Upload page (python -m hub serve)
+fastapi==0.161.1
+uvicorn==0.54.0
+python-multipart==0.0.32
+# Cloudflare R2 storage for the app API (S3-compatible)
+boto3==1.40.40

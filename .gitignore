@@ -13,3 +13,4 @@ inbox/*
 *.m4v
 *.mkv
 *.wav
+node_modules/

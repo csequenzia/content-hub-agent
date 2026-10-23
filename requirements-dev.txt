@@ -1,0 +1,5 @@
+-r requirements.txt
+pytest
+httpx
+# Plays R2 in tests/test_api.py
+moto[server]==5.1.13
