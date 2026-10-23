@@ -1,0 +1,105 @@
+/* Course lesson theme: Healthy Free Life (brand guide v1.0, Sept 15, 2026).
+   Copied into each lesson project as lesson-theme.css; the builder never
+   overwrites a project's copy. Logos and fonts are copied into the project's
+   brand/ folder. Layout sizes assume a 1920x1080 canvas.
+
+   Brand rules applied here:
+   - Headlines: Newsreader 500, olive deep, sentence case, never bold or caps.
+   - Text: DM Sans. Labels 700 caps +0.14em. Body in ink/slate, never a brand color.
+   - Pomegranate marks one thing per screen (section numbers only).
+   - Honey only on dark grounds (title card kicker), never touching pomegranate.
+   - Logos black on light grounds, white on dark/photo grounds. No shadows. */
+
+@font-face { font-family: "Newsreader"; src: url("brand/fonts/newsreader-latin-opsz-normal.woff2") format("woff2"); font-weight: 200 800; font-style: normal; }
+@font-face { font-family: "Newsreader"; src: url("brand/fonts/newsreader-latin-opsz-italic.woff2") format("woff2"); font-weight: 200 800; font-style: italic; }
+@font-face { font-family: "DM Sans"; src: url("brand/fonts/dm-sans-latin-wght-normal.woff2") format("woff2"); font-weight: 100 1000; font-style: normal; }
+
+:root {
+  --bg: #EEF2E4;           /* mist: approved full-page ground */
+  --ink: #1F2A22;          /* body text */
+  --slate: #4B5348;        /* secondary text, captions */
+  --headline: #2A4020;     /* olive deep */
+  --sage: #84A05F;         /* labels, bullet dots */
+  --accent: #D13C5B;       /* pomegranate: one thing per screen */
+  --honey: #DFB244;        /* dark grounds only */
+  --dark: #141A15;         /* forest-black, never pure black */
+  --label: var(--sage);    /* label text */
+  --dot: var(--sage);      /* bullet dots */
+  --kicker: var(--honey);  /* title-card line above the headline (dark ground) */
+  --card: #FFFFFF;
+  --rule: #E6E2D8;
+  --font-head: "Newsreader", Georgia, serif;
+  --font-text: "DM Sans", Helvetica, Arial, sans-serif;
+  --content-left: 110px;   /* left edge of the teaching area */
+  --content-width: 1010px; /* keep clear of the camera box on the right */
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); font-family: var(--font-text); color: var(--ink); }
+
+#root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+.bg { position: absolute; inset: 0; background: var(--bg); }
+
+/* Camera: outer clip is animated between full screen and the rounded box;
+   the inner wrapper carries the crop. The video itself is never animated. */
+#cam-clip { position: absolute; overflow: hidden; z-index: 1; box-shadow: 0 24px 70px rgba(20, 26, 21, 0.16); }
+#cam-wrap { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+#cam { display: block; width: 1920px; height: 1080px; object-fit: cover; }
+
+/* Monogram above the camera box while it is boxed, clear of all teaching content. */
+#brand-mark {
+  position: absolute; right: 72px; top: 34px; z-index: 2;
+  width: 64px; height: 64px; opacity: 0;
+  background: url("brand/hfl-logomark-black.png") center / contain no-repeat;
+}
+
+.beat { position: absolute; inset: 0; z-index: 3; }
+
+h1, h2, h3, .heading { font-family: var(--font-head); font-weight: 500; font-variation-settings: "opsz" 72; letter-spacing: -0.015em; }
+
+/* Title: lower-left over the full-screen camera, on a forest-black fade. */
+.title-scrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(20, 26, 21, 0.82) 0%, rgba(20, 26, 21, 0.6) 38%, rgba(20, 26, 21, 0) 70%); }
+.title-card { position: absolute; left: 110px; bottom: 130px; max-width: 680px; color: #FFFFFF; }
+.title-logo { width: 520px; height: 26px; margin-bottom: 64px; background: url("brand/hfl-logotype-white.png") left center / contain no-repeat; }
+.title-card .kicker { font-family: var(--font-text); font-size: 28px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--kicker); margin-bottom: 20px; }
+.title-card h1 { font-size: 108px; line-height: 1.05; text-wrap: balance; }
+.title-card .sub { font-size: 36px; font-weight: 500; margin-top: 24px; color: rgba(255, 255, 255, 0.88); }
+
+/* Teaching area: everything left of the camera box. */
+.stage { position: absolute; left: var(--content-left); top: 0; width: var(--content-width); height: 1080px; display: flex; flex-direction: column; justify-content: center; }
+
+.section-card .sec-num { font-family: var(--font-head); font-weight: 500; font-style: italic; font-size: 170px; line-height: 1; color: var(--accent); margin-bottom: 10px; }
+.section-card h2 { font-size: 100px; line-height: 1.05; color: var(--headline); text-wrap: balance; }
+.section-card .sub { font-size: 36px; font-weight: 500; color: var(--slate); margin-top: 22px; }
+
+.label { font-size: 26px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--label); margin-bottom: 18px; }
+.heading { font-size: 86px; line-height: 1.05; color: var(--headline); margin-bottom: 48px; text-wrap: balance; }
+.pts { list-style: none; display: flex; flex-direction: column; gap: 30px; }
+.pt { display: flex; align-items: flex-start; gap: 26px; font-size: 54px; font-weight: 500; line-height: 1.18; color: var(--ink); }
+.pt .dot { flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--dot); margin-top: 23px; }
+
+/* Takeaway with an image: text left, image right. */
+.stage-split { flex-direction: row; align-items: center; gap: 48px; }
+.stage-split .takeaway { flex: 1 1 0; min-width: 0; }
+.stage-split .heading { font-size: 70px; }
+.stage-split .pt { font-size: 44px; }
+.stage-split .pt .dot { margin-top: 18px; }
+.stage-split .aid { flex: none; width: 380px; }
+
+/* Image aids: white cards with a hairline rule. */
+.aid-frame { border-radius: 24px; overflow: hidden; background: var(--card); border: 2px solid var(--rule); box-shadow: 0 18px 50px rgba(20, 26, 21, 0.10); aspect-ratio: 4 / 3; }
+.stage-split .aid-frame { aspect-ratio: 3 / 4; }
+.aid-frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.aid figcaption { font-size: 30px; font-weight: 500; color: var(--slate); margin-top: 22px; }
+.stage-image .heading { font-size: 64px; margin-bottom: 32px; }
+.stage-image .aid { width: 820px; }
+
+/* Wide images (diagrams cut from slides): stacked under the points at their real shape. */
+.stage-stack .heading { font-size: 64px; margin-bottom: 26px; }
+.stage-stack .pts { gap: 16px; margin-bottom: 30px; }
+.stage-stack .pt { font-size: 40px; }
+.stage-stack .pt .dot { width: 16px; height: 16px; margin-top: 14px; }
+.stage-stack .aid { width: 100%; }
+.aid.from-slide .aid-frame { aspect-ratio: auto; background: transparent; border: none; border-radius: 18px; }
+.aid.from-slide .aid-frame img { object-fit: contain; }
+.stage-image .aid.from-slide { width: 1010px; }

@@ -9,6 +9,11 @@ Every folder here with a `SKILL.md` is loaded by the editing agent (Claude Agent
   rules in Greg's desktop pipelines (repo `sshcvirtual/claude-video-edits`:
   Talking Head Videos, Podcast Style Clips). Greg should read it and correct it.
 
+- `edit-course-lesson/`, `cut-silences/`, `cut-mistakes/` — Katrina's course lesson
+  skill and the two cut skills it uses, copied from her HyperFrames student kit (see
+  `course/README.md`). Used only for **Course lesson** uploads; the Reel editor does not
+  see them.
+
 ## What to add
 
 Copy each of these in as its own folder (`<name>/SKILL.md` plus any reference files):

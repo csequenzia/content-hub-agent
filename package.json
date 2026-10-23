@@ -1,0 +1,10 @@
+{
+  "name": "content-hub-agent-course",
+  "private": true,
+  "description": "Node tools for course lesson mode: HyperFrames renders the lesson, GSAP animates it. The Python app calls them; see course/README.md.",
+  "engines": { "node": ">=22" },
+  "dependencies": {
+    "gsap": "3.14.2",
+    "hyperframes": "0.7.109"
+  }
+}

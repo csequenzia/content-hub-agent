@@ -14,6 +14,11 @@ CLAUDE_EFFORT = os.environ.get("CLAUDE_EFFORT", "medium")
 MAX_AGENT_TURNS = int(os.environ.get("MAX_AGENT_TURNS", "20"))
 MAX_BUDGET_USD = float(os.environ.get("MAX_BUDGET_USD", "2.00"))  # hard stop per video
 
+# Course lessons read the whole transcript and plan many beats, so they get more room
+COURSE_MAX_TURNS = int(os.environ.get("COURSE_MAX_TURNS", "40"))
+COURSE_MAX_BUDGET_USD = float(os.environ.get("COURSE_MAX_BUDGET_USD", "5.00"))
+MAX_COURSE_IMAGES = int(os.environ.get("MAX_COURSE_IMAGES", "10"))  # Higgsfield images per lesson, retries included
+
 # Transcription (faster-whisper runs on the server's CPU, no extra API key)
 WHISPER_MODEL = os.environ.get("WHISPER_MODEL", "base.en")
 WHISPER_COMPUTE_TYPE = os.environ.get("WHISPER_COMPUTE_TYPE", "int8")

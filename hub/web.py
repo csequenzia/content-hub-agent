@@ -1,7 +1,8 @@
 """A small password-protected web page for testing the agent.
 
-Pick a client and a video, press Upload. The video is edited in the background
-(one at a time) and the draft shows up on the same page to watch or download.
+Pick a client, a kind of edit (Reel or course lesson) and a video, press Upload. The
+video is edited in the background (one at a time) and the draft shows up on the same
+page to watch or download.
 
 Password: set APP_PASSWORD (a Railway variable). The browser asks for it once;
 any username works. Without APP_PASSWORD the page refuses to open.
@@ -33,6 +34,7 @@ UPLOADS_DIR = config.DATA_DIR / "uploads"
 MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "2000"))
 VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".mkv"}
 JOB_ID = re.compile(r"^[0-9a-f]{12}$")
+MODES = {"reel": "Reel (30-60s vertical clip)", "course": "Course lesson (full lesson, Katrina's course style)"}
 
 basic = HTTPBasic(realm="Content hub agent")
 _lock = threading.Lock()
@@ -103,7 +105,7 @@ def safe_filename(name: str) -> str:
 # ---------- the background worker: one video at a time ----------
 
 def run_job(job_id: str) -> None:
-    from .agent import edit_video  # late import: the page loads even if the SDK has a problem
+    from .agent import edit_course, edit_video  # late import: the page loads even if the SDK has a problem
 
     job = update_job(job_id, status="working", started=time.time())
     log_lines: list[str] = []
@@ -113,8 +115,13 @@ def run_job(job_id: str) -> None:
         update_job(job_id, log=log_lines[-20:])
 
     try:
-        result = asyncio.run(edit_video(Path(job["video"]), job["client"], log=log))
+        edit = edit_course if job.get("mode") == "course" else edit_video
+        result = asyncio.run(edit(Path(job["video"]), job["client"], log=log))
         draft = Path(result["draft"])
+        if job.get("mode") == "course":
+            update_job(job_id, status="done", draft=str(draft), cost_usd=result.get("cost_usd"),
+                       course={k: result.get(k) for k in ("note", "cuts", "images")}, finished=time.time())
+            return
         post_file = draft.parent / "post.json"
         post = json.loads(post_file.read_text()) if post_file.exists() else {}
         update_job(job_id, status="done", draft=str(draft), post=post,
@@ -160,9 +167,11 @@ def health():
 
 
 @app.post("/upload", dependencies=[Depends(require_password)])
-def upload(video: UploadFile = File(...), client: str = Form(...)):
+def upload(video: UploadFile = File(...), client: str = Form(...), mode: str = Form("reel")):
     if client not in list_clients():
         raise HTTPException(400, f"Unknown client '{client}'")
+    if mode not in MODES:
+        raise HTTPException(400, f"Unknown kind of edit '{mode}'")
     filename = safe_filename(video.filename)
     if Path(filename).suffix.lower() not in VIDEO_EXTS:  # .MP4 / .MOV from phones and cameras are fine
         raise HTTPException(400, "Please upload an .mp4, .mov, .m4v or .mkv video")
@@ -181,7 +190,7 @@ def upload(video: UploadFile = File(...), client: str = Form(...)):
                 raise HTTPException(413, f"Video is over {MAX_UPLOAD_MB} MB")
             out.write(chunk)
 
-    save_job({"id": job_id, "client": client, "filename": filename, "video": str(dest),
+    save_job({"id": job_id, "client": client, "mode": mode, "filename": filename, "video": str(dest),
               "status": "queued", "created": time.time(), "log": []})
     _queue.put(job_id)
     return RedirectResponse("/", status_code=303)
@@ -207,19 +216,36 @@ def job_video(job_id: str, download: int = 0):
 def home():
     clients = list_clients()
     options = "".join(f'<option value="{html.escape(c)}">{html.escape(c)}</option>' for c in clients)
+    modes = "".join(f'<option value="{k}">{html.escape(v)}</option>' for k, v in MODES.items())
     jobs_html = "".join(_job_card(j) for j in all_jobs()) or '<p class="muted">No videos yet.</p>'
     key_warning = "" if os.environ.get("ANTHROPIC_API_KEY") else (
         '<p class="warn">ANTHROPIC_API_KEY is not set, so edits will fail. Add it in Railway → Variables.</p>')
-    return PAGE.format(options=options, jobs=jobs_html, key_warning=key_warning, max_mb=MAX_UPLOAD_MB)
+    return PAGE.format(options=options, modes=modes, jobs=jobs_html, key_warning=key_warning,
+                       max_mb=MAX_UPLOAD_MB)
 
 
 def _job_card(job: dict) -> str:
     e = html.escape
     status = job["status"]
-    label = {"queued": "Waiting its turn", "working": "Editing… (usually 3-10 minutes)",
+    is_course = job.get("mode") == "course"
+    working = ("Editing… (a course lesson takes roughly 3-5 minutes per minute of video)" if is_course
+               else "Editing… (usually 3-10 minutes)")
+    label = {"queued": "Waiting its turn", "working": working,
              "done": "Draft ready", "failed": "Something went wrong"}.get(status, status)
     body = ""
-    if status == "done":
+    if status == "done" and is_course:
+        info = job.get("course") or {}
+        cuts = "; ".join(f"{c['start']:.1f}-{c['end']:.1f}s {c.get('reason', '')}" for c in info.get("cuts") or [])
+        body = f"""
+        <video controls preload="metadata" src="/jobs/{job['id']}/video"></video>
+        <p><a class="button" href="/jobs/{job['id']}/video?download=1">Download video</a></p>
+        <dl>
+          <dt>Claude's note</dt><dd class="pre">{e(info.get('note') or '')}</dd>
+          <dt>Mistake cuts</dt><dd>{e(cuts or 'None')}</dd>
+          <dt>Images made</dt><dd>{len(info.get('images') or [])}</dd>
+          <dt>Claude cost</dt><dd>${(job.get('cost_usd') or 0):.2f}</dd>
+        </dl>"""
+    elif status == "done":
         post = job.get("post", {})
         tags = " ".join(post.get("hashtags", []))
         body = f"""
@@ -241,7 +267,7 @@ def _job_card(job: dict) -> str:
     return f"""
     <section class="job {status}">
       <h3>{e(job['filename'])}</h3>
-      <p class="meta"><span class="status">{label}</span> · {e(job['client'])} · uploaded {when}</p>
+      <p class="meta"><span class="status">{label}</span> · {"Course lesson" if is_course else "Reel"} · {e(job['client'])} · uploaded {when}</p>
       {body}
     </section>"""
 
@@ -274,11 +300,13 @@ PAGE = """<!doctype html>
 </style></head>
 <body><main>
   <h1>Content hub agent</h1>
-  <p class="muted">Upload a raw talking video. Claude picks the best 30-60 seconds, writes the hook and caption, and makes a vertical draft with captions and the logo. Nothing is posted anywhere.</p>
+  <p class="muted">Upload a raw video. For a Reel, Claude picks the best 30-60 seconds, writes the hook and caption, and makes a vertical draft with captions. For a course lesson, Claude cuts silences and mistakes and builds the full lesson with title, takeaways, section cards and images. Nothing is posted anywhere.</p>
   {key_warning}
   <form id="upload" method="post" action="/upload" enctype="multipart/form-data">
     <label for="client">Client brand kit</label>
     <select id="client" name="client">{options}</select>
+    <label for="mode">Kind of edit</label>
+    <select id="mode" name="mode">{modes}</select>
     <label for="video">Video (.mp4 or .mov, any capitalization, up to {max_mb} MB)</label>
     <input id="video" name="video" type="file" accept="video/*,.mov,.mp4,.m4v,.mkv,.MOV,.MP4,.M4V,.MKV" required>
     <p class="muted">Tip: name the file after the hook, like "Why your knee still hurts.mov".</p>

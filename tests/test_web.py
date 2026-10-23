@@ -109,3 +109,30 @@ def test_bad_job_ids_are_404(client):
 def test_filename_keeps_the_hook():
     assert web.safe_filename("../../Why your knee still hurts?.MOV") == "Why your knee still hurts?.mov"
     assert web.safe_filename("<script>.mp4") == "script.mp4"
+
+
+def test_course_upload_runs_course_edit(client, monkeypatch, tmp_path):
+    lesson = tmp_path / "drafts" / "lesson" / "renders" / "Gut health - course draft.mp4"
+    lesson.parent.mkdir(parents=True)
+    lesson.write_bytes(b"lesson mp4")
+
+    async def fake_course(video, client_id, log=print):
+        return {"draft": lesson, "cost_usd": 0.8, "note": "Cut one stutter.",
+                "cuts": [{"start": 1.0, "end": 1.4, "reason": "stutter"}], "images": ["fiber"]}
+
+    monkeypatch.setattr(agent, "edit_course", fake_course)
+    page = client.get("/", auth=AUTH).text
+    assert 'value="course"' in page
+    r = client.post("/upload", auth=AUTH, data={"client": "sample-clinic", "mode": "course"},
+                    files={"video": ("Gut health.mp4", b"raw", "video/mp4")}, follow_redirects=False)
+    assert r.status_code == 303
+    job = wait_for(client, "done")
+    page = client.get("/", auth=AUTH).text
+    assert "Course lesson" in page and "Cut one stutter." in page and "1.0-1.4s stutter" in page
+    assert client.get(f"/jobs/{job['id']}/video", auth=AUTH).content == b"lesson mp4"
+
+
+def test_unknown_mode_is_rejected(client):
+    bad = client.post("/upload", auth=AUTH, data={"client": "sample-clinic", "mode": "movie"},
+                      files={"video": ("a.mp4", b"hi", "video/mp4")})
+    assert bad.status_code == 400
