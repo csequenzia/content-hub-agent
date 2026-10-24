@@ -1,0 +1,52 @@
+{
+  "name": "The Contrarian Take",
+  "source": "https://www.instagram.com/p/DM3zjb4ypww/",
+  "reference": "34s, two-camera podcast set, cuts every 4-7 seconds between a tight face shot, a wide shot and a medium. Word-stack captions from the first word, no hook graphic.",
+  "length": {
+    "min": 25,
+    "max": 45
+  },
+  "hook": {
+    "look": "none"
+  },
+  "captions": {
+    "look": "stack",
+    "x": 0.11,
+    "y": 0.56,
+    "size": 62,
+    "small": 46,
+    "big": 100,
+    "block_words": 9,
+    "line_chars": 16
+  },
+  "shots": [
+    {
+      "at": 0,
+      "zoom": 1.55
+    },
+    {
+      "at": 0.21,
+      "zoom": 1.0
+    },
+    {
+      "at": 0.36,
+      "zoom": 1.25
+    },
+    {
+      "at": 0.56,
+      "zoom": 1.0
+    },
+    {
+      "at": 0.81,
+      "zoom": 1.55
+    }
+  ],
+  "focus": {
+    "x": 0.5,
+    "y": 0.3
+  },
+  "pauses": {
+    "max_gap": 0.2
+  },
+  "edit_notes": "Name-the-fix: a contrarian command ('Never...') and its exact replacement ('Always...') back to back in the first 5 seconds, then proof, who's doing it wrong, the payoff number, and a credibility close. The first words are the hook and build up in the stack, so start exactly on 'Never' (or the creator's equivalent).\n\n`emphasis`: one word per sentence, the command words first (NEVER, ALWAYS), then numbers.\n\nCamera: very tight on the face for the command and fix, full frame for the proof, medium for the people doing it wrong, full frame for the payoff number, tight again for the close. Fast, punchy: cut pauses hard."
+}

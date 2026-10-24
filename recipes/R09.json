@@ -1,0 +1,21 @@
+{
+  "name": "The Big Reveal",
+  "source": "https://www.instagram.com/p/DSybXb3gGIy/",
+  "reference": "25s, live stage footage. Wide 0-3s, tight on her face 3-14s, wide again 14-25s.",
+  "length": {"min": 18, "max": 35},
+  "hook": {
+    "look": "boxes",
+    "seconds": 5.4,
+    "y": 0.44,
+    "size": 66,
+    "second_size": 34,
+    "fg": "#000000",
+    "bg": "#FFFFFF",
+    "case": "as_written"
+  },
+  "captions": {"look": "plain", "y": 0.75, "size": 50, "words": 14, "margin": 200, "case": "as_said"},
+  "shots": [{"at": 0, "zoom": 1.0}, {"at": 0.12, "zoom": 1.45}, {"at": 0.56, "zoom": 1.0}],
+  "focus": {"x": 0.5, "y": 0.3},
+  "pauses": {"max_gap": 0.3},
+  "edit_notes": "Maria's edit is one unbroken monologue with zero dead air, about 25 seconds. The engine is a big result, then 'this is partially how:', and the 'how' is radical honesty, closed by a dry sign-off.\n\nHook: two boxes. hook_lines[0] is the result with its colon (e.g. \"I've coached 7,000 Christians:\"), hook_lines[1] is exactly \"this is partially how:\". Keep the creator's lowercase/sentence case. It shows for the first 5.4 seconds while she starts talking; nothing is said over a silent hook.\n\nBeats to keep, in order: radical honesty (what I share), proof they can check, every mistake, the risky confession, the dry sign-off (\"Not perfect. But it happened.\" or similar). End on the sign-off; never add a call to action on screen.\n\nCamera: start on the full frame, punch in tight on the face (zoom 1.45) about 3 seconds in, mid-sentence, and stay tight through the honesty and proof beats. Cut back to the full frame (zoom 1.0) on the 'every mistake' beat and stay wide to the end. That is two cuts in the whole Reel; do not add more.\n\nCut every retake, restart and stumble; keep only the last clean take of each line."
+}

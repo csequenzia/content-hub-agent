@@ -1,0 +1,53 @@
+{
+  "name": "No Overhead",
+  "source": "https://www.instagram.com/p/DPPnqKVD3MG/",
+  "reference": "60s repurposed podcast interview: tight on her, then a wide two-shot, back to tight. A white boxed hook sits low for the whole video with a small dark caption strip under it.",
+  "length": {
+    "min": 35,
+    "max": 60
+  },
+  "hook": {
+    "look": "boxes",
+    "seconds": "all",
+    "y": 0.745,
+    "size": 40,
+    "second_size": 30,
+    "fg": "#000000",
+    "bg": "#FFFFFF",
+    "case": "as_written"
+  },
+  "captions": {
+    "look": "pill",
+    "y": 0.815,
+    "size": 28,
+    "words": 5,
+    "bg": "#3A3A3A",
+    "case": "as_said"
+  },
+  "shots": [
+    {
+      "at": 0,
+      "zoom": 1.4
+    },
+    {
+      "at": 0.14,
+      "zoom": 1.0
+    },
+    {
+      "at": 0.45,
+      "zoom": 1.5
+    },
+    {
+      "at": 0.66,
+      "zoom": 1.0
+    }
+  ],
+  "focus": {
+    "x": 0.5,
+    "y": 0.3
+  },
+  "pauses": {
+    "max_gap": 0.3
+  },
+  "edit_notes": "A flex that turns into a confession: 15 seconds of an impossible-sounding result ('[result] with no [thing everyone assumes it needs]:'), then the honest, human reason and a disarming kicker. One box hook, lowercase, ending in a colon, pinned the whole Reel.\n\nBeats in order: hook flex, the breakdown, proof number, pattern interrupt, the human reason, humility, the kicker. Her original cuts to the interviewer; with solo footage, use the full frame where she'd cut away.\n\nCamera: tight on the face for the flex, full frame for the breakdown, tight for the confession, full frame for the kicker."
+}

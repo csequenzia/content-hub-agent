@@ -1,0 +1,36 @@
+{
+  "name": "Humble Brag",
+  "source": "https://www.instagram.com/p/DUgEx7iklCC/",
+  "reference": "96s single continuous handheld selfie at a whiteboard (her kid's easel). No cuts, no zooms, no music. Box hook for the first ~3s, plain sentence captions low.",
+  "length": {
+    "min": 40,
+    "max": 90
+  },
+  "hook": {
+    "look": "boxes",
+    "seconds": 3.0,
+    "y": 0.52,
+    "size": 44,
+    "second_size": 34,
+    "fg": "#000000",
+    "bg": "#FFFFFF",
+    "case": "as_written"
+  },
+  "captions": {
+    "look": "plain",
+    "y": 0.76,
+    "size": 40,
+    "words": 8,
+    "margin": 220,
+    "case": "as_said"
+  },
+  "shots": [],
+  "focus": {
+    "x": 0.5,
+    "y": 0.35
+  },
+  "pauses": {
+    "max_gap": 0.6
+  },
+  "edit_notes": "One real, unpolished take: she breaks a big number down live on a whiteboard, line by line (ads, team, other, profit), then says what she actually pays attention to. The charm is that it is raw, so keep natural pauses short but don't make it choppy: only cut retakes and long silences. No zooms (leave `shots` empty).\n\nHook: one box, lowercase and casual, can end in an emoji (\"breakdown of my ... on my kid's easel 😅\"). It disappears after 3 seconds.\n\nKeep every number she writes or says, in order, and the closing point. If the footage is not a board breakdown, still keep it as one continuous take."
+}

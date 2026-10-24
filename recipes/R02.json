@@ -1,0 +1,60 @@
+{
+  "name": "Starting From Zero",
+  "source": "https://www.instagram.com/p/DEoDhJkSVgg/",
+  "reference": "72s podcast-style, seated. No hook graphic: the spoken hook builds up in the word stack. Cuts between a tight face shot and a medium shot every 5-12 seconds.",
+  "length": {
+    "min": 40,
+    "max": 75
+  },
+  "hook": {
+    "look": "none"
+  },
+  "captions": {
+    "look": "stack",
+    "x": 0.11,
+    "y": 0.58,
+    "size": 62,
+    "small": 46,
+    "big": 100,
+    "block_words": 9,
+    "line_chars": 16
+  },
+  "shots": [
+    {
+      "at": 0,
+      "zoom": 1.45
+    },
+    {
+      "at": 0.06,
+      "zoom": 1.0
+    },
+    {
+      "at": 0.24,
+      "zoom": 1.45
+    },
+    {
+      "at": 0.41,
+      "zoom": 1.0
+    },
+    {
+      "at": 0.5,
+      "zoom": 1.3
+    },
+    {
+      "at": 0.69,
+      "zoom": 1.45
+    },
+    {
+      "at": 0.93,
+      "zoom": 1.0
+    }
+  ],
+  "focus": {
+    "x": 0.5,
+    "y": 0.3
+  },
+  "pauses": {
+    "max_gap": 0.25
+  },
+  "edit_notes": "A complete give: authority line plus 'if I had to start from zero, this is exactly what I would do', then every step with a specific number or rule. No hook box: the first spoken sentence IS the hook and builds up word by word in the stack, so it must be the very first thing said.\n\nKeep every numbered step ('Step one', 'Step two'...) and its one concrete number or example; the stack shows 'STEP ONE,' as its own small line, so keep the step words. In `emphasis`, pick one punchy word per sentence (a number, 'zero', 'every', the step's key verb).\n\nCamera: open tight on the face, cut to the full frame as step one starts, then alternate tight and wide at each new step (about every 8-12 seconds), ending tight on the payoff. Cut on a step change, never mid-word.\n\nNo dead air, no call to action on screen; the payoff line ends it."
+}

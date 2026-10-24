@@ -1,0 +1,68 @@
+{
+  "name": "The Big Numbers",
+  "source": "https://www.instagram.com/p/DIKU3ARzsgw/",
+  "reference": "66s seated in a bright white room. Word-stack captions, no hook graphic. Cuts between wide, close and medium about every 5-7 seconds.",
+  "length": {
+    "min": 40,
+    "max": 70
+  },
+  "hook": {
+    "look": "none"
+  },
+  "captions": {
+    "look": "stack",
+    "x": 0.11,
+    "y": 0.6,
+    "size": 62,
+    "small": 46,
+    "big": 100,
+    "block_words": 9,
+    "line_chars": 16
+  },
+  "shots": [
+    {
+      "at": 0,
+      "zoom": 1.0
+    },
+    {
+      "at": 0.065,
+      "zoom": 1.45
+    },
+    {
+      "at": 0.18,
+      "zoom": 1.0
+    },
+    {
+      "at": 0.27,
+      "zoom": 1.45
+    },
+    {
+      "at": 0.47,
+      "zoom": 1.2
+    },
+    {
+      "at": 0.6,
+      "zoom": 1.0
+    },
+    {
+      "at": 0.68,
+      "zoom": 1.45
+    },
+    {
+      "at": 0.83,
+      "zoom": 1.0
+    },
+    {
+      "at": 0.92,
+      "zoom": 1.45
+    }
+  ],
+  "focus": {
+    "x": 0.5,
+    "y": 0.3
+  },
+  "pauses": {
+    "max_gap": 0.25
+  },
+  "edit_notes": "Proof number up front ('I'm getting about X a month...'), the setup ('this is what I'd do if I had zero'), then numbered steps, a fresh receipt as proof, and the payoff. The first spoken sentence is the hook and builds in the stack.\n\nKeep each step's specific detail (times, counts, the contrarian bit). `emphasis`: the number or key word of each sentence.\n\nCamera: start on the full frame, punch in tight within the first 5 seconds, then alternate wide and tight at each new step, ending tight on the payoff."
+}

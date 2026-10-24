@@ -28,8 +28,9 @@ from claude_agent_sdk import (
     tool,
 )
 
-from . import config, course, higgsfield
+from . import config, course, higgsfield, recipes, timeline
 from .brand import load_brand
+from . import media
 from .drafts import render_draft
 from .transcribe import as_numbered_text, transcribe
 
@@ -51,6 +52,13 @@ Work in this order:
    voice, ending with the client's call to action if they have one).
 5. Call render_draft once. If it returns a problem, fix the plan and call it again.
 
+When the prompt includes an edit recipe, the video copies the editing style of one reference
+reel. The recipe's length wins over the 30-60 seconds above, its notes say where the beats,
+camera changes and emphasis go, and the renderer already applies its caption and hook look.
+Use `segments` to drop retakes and flubs from the middle, `shots` to place the zoom cuts the
+recipe describes (look_at_frame shows you where the face is; set `focus` to it), and
+`hook_lines` when the recipe's hook is split into boxes.
+
 This runs unattended: nobody can answer a question, re-upload or re-film before the draft
 exists. Never ask and never stop without calling render_draft. If the footage looks cut
 short, misses part of a script, or is shorter than the target length, edit the best draft
@@ -61,43 +69,74 @@ speaker did not make. When you finish, reply with two sentences: what you picked
 """
 
 
-def build_tools(video: Path, client_id: str, work: Path, result: dict):
+def build_tools(video: Path, client_id: str, work: Path, result: dict, recipe: dict | None = None):
     transcript_cache: dict = {}
+    recipe = recipe or recipes.load_recipe(None)
+    lo, hi = recipe["length"]["min"], recipe["length"]["max"]
 
     def get_tx() -> dict:
         if not transcript_cache:
             transcript_cache.update(transcribe(video, work))
         return transcript_cache
 
-    @tool("get_transcript", "Transcript of the raw video, one numbered sentence per line with start-end seconds.", {})
+    @tool("get_transcript", "Transcript of the raw video, one numbered sentence per line with start-end seconds. "
+          "words=true also lists every word with its time, for cutting out a retake inside a sentence.",
+          {"type": "object", "properties": {"words": {"type": "boolean"}}})
     async def get_transcript(args):
-        return {"content": [{"type": "text", "text": as_numbered_text(get_tx())}]}
+        text = as_numbered_text(get_tx())
+        if args.get("words"):
+            text += "\n\nWords:\n" + " ".join(f"{w['word']}@{w['start']:.2f}" for w in timeline.all_words(get_tx()))
+        return {"content": [{"type": "text", "text": text}]}
 
     @tool("get_brand_kit", "The client's brand kit: voice, audience, offers, story, never-say list, CTA, colors.", {})
     async def get_brand_kit(args):
         brand = load_brand(client_id)
         return {"content": [{"type": "text", "text": json.dumps(brand, indent=2)}]}
 
+    @tool("look_at_frame", "One frame of the raw video at a time in seconds, to see where the face sits "
+          "(for `focus`) or what the shot looks like.", {"seconds": float})
+    async def look_at_frame(args):
+        png = await asyncio.to_thread(media.frame_png, video, float(args["seconds"]))
+        return {"content": [{"type": "image", "data": base64.b64encode(png).decode(), "mimeType": "image/png"}]}
+
     @tool(
         "render_draft",
-        "Render the first draft. start/end are seconds in the raw video (use sentence times from the "
-        f"transcript); the clip must be {config.MIN_CLIP_SECONDS}-{config.MAX_CLIP_SECONDS}s long.",
+        "Render the first draft. Times are seconds in the raw video (use word and sentence times from the "
+        f"transcript). Give `segments` (stretches to keep, in order) or one `start`/`end`; the kept total "
+        f"must be {lo}-{hi}s.",
         {
             "type": "object",
             "properties": {
                 "start": {"type": "number", "description": "Clip start, seconds in the raw video"},
                 "end": {"type": "number", "description": "Clip end, seconds in the raw video"},
+                "segments": {"type": "array", "description": "Stretches of the raw video to keep, in order. "
+                             "Leave out retakes, flubs and asides. Use instead of start/end.",
+                             "items": {"type": "object", "properties": {"start": {"type": "number"},
+                                                                        "end": {"type": "number"}},
+                                       "required": ["start", "end"]}},
                 "hook": {"type": "string", "description": "On-screen hook for the first seconds, under 8 words"},
+                "hook_lines": {"type": "array", "items": {"type": "string"},
+                               "description": "The hook split into its boxes when the recipe's hook is 'boxes' "
+                                              "(first line big, the rest small)"},
+                "shots": {"type": "array", "description": "Zoom cuts: from raw-video second `at`, show the frame "
+                          "at `zoom` (1.0 = full frame, 1.4 = tight on the face). Hard cuts, like switching cameras.",
+                          "items": {"type": "object", "properties": {"at": {"type": "number"},
+                                                                     "zoom": {"type": "number"}},
+                                    "required": ["at", "zoom"]}},
+                "focus": {"type": "object", "description": "Where zooms close in, 0-1 of the frame (the face)",
+                          "properties": {"x": {"type": "number"}, "y": {"type": "number"}}},
+                "emphasis": {"type": "array", "items": {"type": "string"},
+                             "description": "Words to make big in 'stack' captions, one per sentence or so"},
                 "post_caption": {"type": "string", "description": "Instagram caption in the client's voice"},
                 "hashtags": {"type": "array", "items": {"type": "string"}},
                 "why": {"type": "string", "description": "One sentence for the reviewer: why this section"},
             },
-            "required": ["start", "end", "hook", "post_caption", "why"],
+            "required": ["hook", "post_caption", "why"],
         },
     )
     async def render_draft_tool(args):
         try:
-            out = render_draft(video, client_id, get_tx(), args)
+            out = render_draft(video, client_id, get_tx(), args, recipe=recipe)
         except ValueError as problem:
             return {"content": [{"type": "text", "text": f"Not rendered: {problem}. Adjust and try again."}],
                     "is_error": True}
@@ -105,7 +144,7 @@ def build_tools(video: Path, client_id: str, work: Path, result: dict):
         result["plan"] = args
         return {"content": [{"type": "text", "text": f"Draft saved: {out}"}]}
 
-    return [get_transcript, get_brand_kit, render_draft_tool]
+    return [get_transcript, get_brand_kit, look_at_frame, render_draft_tool]
 
 
 def brief_prompt(brief: dict | None) -> str:
@@ -113,6 +152,10 @@ def brief_prompt(brief: dict | None) -> str:
     if not brief:
         return ""
     lines = []
+    recipe = recipes.load_recipe(brief.get("template"))
+    if recipe.get("template"):
+        lines.append(f'This video copies the edit of Maria Wendt\'s reel "{recipe["name"]}" '
+                     f'({recipe.get("source", "")}). Follow its edit recipe:\n' + recipes.describe(recipe))
     if brief.get("script"):
         lines.append("They filmed this from a script on a teleprompter, possibly in several takes joined "
                      "end to end. Keep as much of the script as fits the length limit, starting from its "
@@ -128,15 +171,18 @@ async def edit_video(video: Path, client_id: str, log=print, brief: dict | None 
     """Run the agent on one raw video. Returns {"draft": Path, "plan": dict, "summary": str, "cost_usd": float}.
 
     `log` receives each thing Claude says along the way (the upload page shows these).
-    `brief` is what the creator already decided: {"hook": ..., "script": ...} (both optional).
+    `brief` is what the creator already decided: {"hook": ..., "script": ..., "template": ...} (all optional;
+    template is the Content Studio card's Maria reel id, which picks the edit recipe).
     """
     if not os.environ.get("ANTHROPIC_API_KEY"):
         raise RuntimeError("ANTHROPIC_API_KEY is not set (see .env.example)")
     video = video.resolve()
     work = config.WORK_DIR / client_id / video.stem
     result: dict = {}
-    server = create_sdk_mcp_server(name="hub", tools=build_tools(video, client_id, work, result))
-    tool_names = ["mcp__hub__get_transcript", "mcp__hub__get_brand_kit", "mcp__hub__render_draft"]
+    recipe = recipes.load_recipe((brief or {}).get("template"))
+    tools = build_tools(video, client_id, work, result, recipe)
+    server = create_sdk_mcp_server(name="hub", tools=tools)
+    tool_names = [f"mcp__hub__{t.name}" for t in tools]
 
     options = ClaudeAgentOptions(
         model=config.CLAUDE_MODEL,

@@ -8,7 +8,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from . import captions, config, media
+from . import config, looks, media, recipes, timeline
 from .brand import load_brand, logo_path
 
 
@@ -34,44 +34,94 @@ def folder_name(stem: str) -> str:
     return re.sub(r"[^A-Za-z0-9 _-]+", "", stem).strip() or "video"
 
 
-def validate_plan(plan: dict, transcript: dict) -> list[str]:
-    problems = []
-    for key in ("start", "end", "hook", "post_caption"):
-        if key not in plan:
-            problems.append(f"missing '{key}'")
+def plan_segments(plan: dict) -> list[tuple[float, float]]:
+    """The stretches of raw video Claude chose: `segments`, or one `start`-`end` stretch."""
+    if plan.get("segments"):
+        return [(float(x["start"]), float(x["end"])) for x in plan["segments"]]
+    if "start" in plan and "end" in plan:
+        return [(float(plan["start"]), float(plan["end"]))]
+    return []
+
+
+def validate_plan(plan: dict, transcript: dict, recipe: dict | None = None) -> list[str]:
+    recipe = recipe or recipes.load_recipe(None)
+    lo, hi = recipe["length"]["min"], recipe["length"]["max"]
+    problems = [f"missing '{key}'" for key in ("hook", "post_caption") if key not in plan]
+    segments = plan_segments(plan)
+    if not segments:
+        problems.append("missing 'segments' (or 'start' and 'end')")
     if problems:
         return problems
-    length = plan["end"] - plan["start"]
-    if plan["start"] < 0 or plan["end"] > transcript["duration"] + 0.5:
-        problems.append(f"times must be inside the video (0-{transcript['duration']:.1f}s)")
-    short_video = transcript["duration"] < config.MIN_CLIP_SECONDS
-    if not short_video and not (config.MIN_CLIP_SECONDS - 2 <= length <= config.MAX_CLIP_SECONDS + 2):
-        problems.append(f"clip is {length:.1f}s; it must be {config.MIN_CLIP_SECONDS}-{config.MAX_CLIP_SECONDS}s")
-    if len(plan["hook"]) > 70:
+    if any(s < 0 or e > transcript["duration"] + 0.5 or e <= s for s, e in segments):
+        problems.append(f"times must be inside the video (0-{transcript['duration']:.1f}s), each end after its start")
+    length = timeline.length(timeline.merge(segments))
+    short_video = transcript["duration"] < lo
+    if not short_video and not (lo - 2 <= length <= hi + 2):
+        problems.append(f"clip is {length:.1f}s; it must be {lo}-{hi}s")
+    hook_lines = plan.get("hook_lines") or [plan["hook"]]
+    if len(hook_lines[0]) > 70:
         problems.append("hook is too long for the screen; keep it under 70 characters")
+    for shot in plan.get("shots") or []:
+        if not 1.0 <= float(shot.get("zoom", 1)) <= 2.0:
+            problems.append("each shot's zoom must be between 1.0 (full frame) and 2.0")
+            break
     return problems
 
 
+def default_shots(recipe: dict, segments: list[tuple[float, float]]) -> list[dict]:
+    """The recipe's camera plan (fractions of the Reel) turned into raw-video times."""
+    total = timeline.length(segments)
+    out = []
+    for shot in recipe.get("shots") or []:
+        reel_t, acc = shot["at"] * total, 0.0
+        for s, e in segments:
+            if acc + (e - s) >= reel_t:
+                out.append({"at": s + (reel_t - acc), "zoom": shot["zoom"]})
+                break
+            acc += e - s
+    return out
+
+
 def render_draft(video: Path, client_id: str, transcript: dict, plan: dict,
-                 drafts_dir: Path = config.DRAFTS_DIR) -> Path:
-    problems = validate_plan(plan, transcript)
+                 drafts_dir: Path = config.DRAFTS_DIR, recipe: dict | None = None) -> Path:
+    recipe = recipe or recipes.load_recipe(None)
+    problems = validate_plan(plan, transcript, recipe)
     if problems:
         raise ValueError("; ".join(problems))
     brand = load_brand(client_id)
-    start, end = snap_to_words(transcript, plan["start"], plan["end"])
+    segments = timeline.snap(transcript, plan_segments(plan))
+    segments = timeline.cut_pauses(transcript, segments, recipe["pauses"].get("max_gap"))
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     folder = drafts_dir / client_id / f"{folder_name(video.stem)}-{stamp}"
-    words = captions.words_in_range(transcript, start, end)
-    ass = captions.write_ass(captions.chunk_words(words), plan["hook"], brand, folder / "captions.ass")
-    out = media.render_clip(video, start, end, ass, folder / f"{video.stem} - first draft.mp4",
-                            logo=logo_path(client_id, brand))
+    words = timeline.reel_words(transcript, segments)
+    hook_lines = [x for x in (plan.get("hook_lines") or [plan["hook"]]) if x.strip()]
+    ass = looks.write_captions(words, recipe, brand, folder / "captions.ass",
+                               hook_text=" ".join(hook_lines), emphasis=plan.get("emphasis"))
+    overlays = []
+    if recipe["hook"].get("look") == "boxes" and hook_lines:
+        png = looks.hook_boxes_png(hook_lines, recipe, folder / "hook.png")
+        overlays.append((png, 0.0, looks.hook_until(recipe, words)))
+
+    raw_shots = plan.get("shots") or default_shots(recipe, segments)
+    shots = []
+    for shot in raw_shots:
+        at = timeline.to_reel(segments, float(shot["at"]))
+        if at is None:   # the shot starts inside a cut: begin it where the Reel resumes
+            later = [s for s, _ in segments if s >= float(shot["at"])]
+            at = timeline.to_reel(segments, later[0]) if later else None
+        if at is not None:
+            shots.append({"at": at, "zoom": float(shot["zoom"])})
+    out = media.render_edit(video, segments, ass, folder / f"{video.stem} - first draft.mp4",
+                            shots=shots, focus=plan.get("focus") or recipe.get("focus"), overlays=overlays)
 
     post = {
         "client": client_id,
         "source_video": video.name,
-        "clip_start": round(start, 2),
-        "clip_end": round(end, 2),
+        "recipe": recipe.get("template"),
+        "segments": [[round(s, 2), round(e, 2)] for s, e in segments],
+        "clip_start": round(segments[0][0], 2),
+        "clip_end": round(segments[-1][1], 2),
         "hook": plan["hook"],
         "post_caption": plan["post_caption"],
         "hashtags": plan.get("hashtags", []),

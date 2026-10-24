@@ -255,7 +255,7 @@ def test_several_clips_are_joined_with_the_hook(client, with_r2, callbacks, monk
     assert made.status_code == 201 and made.json()["filename"] == "Why your knee still hurts.mp4"
     wait(client, made.json()["id"], "draft_ready")
     assert joined == [[b"TAKE1", b"TAKE2"]] and seen["video"] == b"TAKE1TAKE2"
-    assert seen["brief"] == {"hook": "Why your knee still hurts", "script": "Line one.\n\nLine two."}
+    assert seen["brief"] == {"hook": "Why your knee still hurts", "script": "Line one.\n\nLine two.", "template": None}
 
     def post(body):
         return client.post("/api/v1/videos", headers=AUTH, json={"client_id": "sample-clinic", **body}).status_code
