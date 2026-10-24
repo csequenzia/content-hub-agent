@@ -10,3 +10,5 @@ uvicorn==0.54.0
 python-multipart==0.0.32
 # Cloudflare R2 storage for the app API (S3-compatible)
 boto3==1.40.40
+# Box hooks (Maria-style recipes) are drawn as PNGs
+pillow==12.3.0

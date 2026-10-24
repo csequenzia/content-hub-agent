@@ -1,0 +1,58 @@
+{
+  "name": "One Thing Needed",
+  "source": "https://www.instagram.com/p/DZOTojZlNPl/",
+  "reference": "46s podcast-style on a white sofa. Box hook up top for the first 3 seconds, then one big outlined word at a time. Cuts between wide and close every 5-8 seconds.",
+  "length": {
+    "min": 30,
+    "max": 50
+  },
+  "hook": {
+    "look": "boxes",
+    "seconds": 3.0,
+    "y": 0.44,
+    "size": 44,
+    "second_size": 44,
+    "fg": "#000000",
+    "bg": "#FFFFFF",
+    "case": "as_written"
+  },
+  "captions": {
+    "look": "word",
+    "y": 0.69,
+    "size": 76
+  },
+  "shots": [
+    {
+      "at": 0,
+      "zoom": 1.0
+    },
+    {
+      "at": 0.115,
+      "zoom": 1.45
+    },
+    {
+      "at": 0.38,
+      "zoom": 1.0
+    },
+    {
+      "at": 0.46,
+      "zoom": 1.45
+    },
+    {
+      "at": 0.72,
+      "zoom": 1.0
+    },
+    {
+      "at": 0.93,
+      "zoom": 1.45
+    }
+  ],
+  "focus": {
+    "x": 0.5,
+    "y": 0.3
+  },
+  "pauses": {
+    "max_gap": 0.25
+  },
+  "edit_notes": "Tiny audience, huge number: 'You only need this to [result]:' then reframe the standard, a receipt read out loud, the number, the mechanism, reset the minimum, and the payoff with the comment keyword. Hook: one box that reads as one sentence ending in a colon (give it as ONE hook line; it wraps to two). It is gone after 3 seconds, so the spoken first line must carry on from it.\n\nCaptions are one word at a time, so keep the pace brisk and cut pauses.\n\nCamera: full frame for the hook, tight from ~5 seconds, wide again for the receipt, tight for the number and mechanism, wide for resetting the minimum, tight for the call to action."
+}

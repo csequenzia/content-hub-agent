@@ -124,3 +124,57 @@ def render_clip(video: Path, start: float, end: float, ass_file: Path, out: Path
             "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(out)]
     run(cmd)
     return out
+
+
+def zoom_expr(shots: list[dict]) -> str:
+    """Piecewise zoom on the Reel's clock (hard cuts, like switching cameras). shots: [{"at": s, "zoom": z}]."""
+    expr = "1"
+    for shot in sorted(shots, key=lambda s: s["at"]):
+        z = min(max(float(shot["zoom"]), 1.0), 2.5)
+        expr = f"if(gte(in/{config.FPS},{shot['at']:.3f}),{z:.3f},{expr})"
+    return expr
+
+
+def render_edit(video: Path, segments: list[tuple[float, float]], ass_file: Path, out: Path,
+                shots: list[dict] | None = None, focus: dict | None = None,
+                overlays: list[tuple[Path, float, float]] | None = None) -> Path:
+    """Keep only `segments` of the raw video, fill a 1080x1920 frame, zoom per `shots`, burn the
+    captions, and lay PNG overlays (box hooks) over the given Reel-time windows."""
+    out.parent.mkdir(parents=True, exist_ok=True)
+    w, h, fps = config.OUTPUT_WIDTH, config.OUTPUT_HEIGHT, config.FPS
+    keep = "+".join(f"between(t,{s:.3f},{e:.3f})" for s, e in segments)
+    fonts = f":fontsdir='{_filter_path(config.FONTS_DIR)}'" if config.FONTS_DIR.exists() else ""
+    focus = focus or {"x": 0.5, "y": 0.33}
+    fx, fy = min(max(focus.get("x", 0.5), 0), 1), min(max(focus.get("y", 0.33), 0), 1)
+
+    video_chain = (f"[0:v]fps={fps},select='{keep}',setpts=N/{fps}/TB,"
+                   f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},setsar=1")
+    if shots:
+        video_chain += (f",zoompan=z='{zoom_expr(shots)}':d=1:s={w}x{h}:fps={fps}"
+                        f":x='(iw-iw/zoom)*{fx:.3f}':y='(ih-ih/zoom)*{fy:.3f}'")
+    video_chain += f",ass='{_filter_path(ass_file)}'{fonts}[v0]"
+    graph = [video_chain, f"[0:a]aselect='{keep}',asetpts=N/SR/TB[aout]"]
+
+    cmd = ["ffmpeg", "-y", "-v", "error", "-i", str(video)]
+    last = "v0"
+    for i, (png, start, end) in enumerate(overlays or [], start=1):
+        cmd += ["-i", str(png)]
+        graph.append(f"[{last}][{i}:v]overlay=0:0:enable='between(t,{start:.3f},{end:.3f})'[v{i}]")
+        last = f"v{i}"
+    cmd += ["-filter_complex", ";".join(graph), "-map", f"[{last}]"]
+    if has_stream(video, "a"):
+        cmd += ["-map", "[aout]"]
+    else:
+        cmd[cmd.index("-filter_complex") + 1] = ";".join(g for g in graph if "[aout]" not in g)
+    cmd += ["-c:v", config.VIDEO_CODEC, "-preset", config.VIDEO_PRESET, "-crf", config.VIDEO_CRF,
+            "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(out)]
+    run(cmd)
+    return out
+
+
+def frame_png(video: Path, seconds: float) -> bytes:
+    """One frame of a video, 540 wide, for Claude to look at."""
+    out = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{max(0, seconds):.2f}", "-i", str(video),
+                          "-frames:v", "1", "-vf", "scale=540:-2", "-f", "image2pipe", "-c:v", "png", "-"],
+                         capture_output=True, check=True)
+    return out.stdout

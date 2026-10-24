@@ -1,0 +1,54 @@
+{
+  "name": "One Small Tweak",
+  "source": "https://www.instagram.com/p/DZGlM5FlIex/",
+  "reference": "37s, three camera setups so it never sits still: tight face, full wide, side close. Box hook for the first 3 seconds, then one big outlined word at a time.",
+  "length": {
+    "min": 25,
+    "max": 45
+  },
+  "hook": {
+    "look": "boxes",
+    "seconds": 3.0,
+    "y": 0.53,
+    "size": 44,
+    "second_size": 44,
+    "fg": "#000000",
+    "bg": "#FFFFFF",
+    "case": "as_written"
+  },
+  "captions": {
+    "look": "word",
+    "y": 0.7,
+    "size": 76
+  },
+  "shots": [
+    {
+      "at": 0,
+      "zoom": 1.5
+    },
+    {
+      "at": 0.165,
+      "zoom": 1.0
+    },
+    {
+      "at": 0.345,
+      "zoom": 1.35
+    },
+    {
+      "at": 0.51,
+      "zoom": 1.0
+    },
+    {
+      "at": 0.9,
+      "zoom": 1.5
+    }
+  ],
+  "focus": {
+    "x": 0.5,
+    "y": 0.3
+  },
+  "pauses": {
+    "max_gap": 0.25
+  },
+  "edit_notes": "Pro tip: 'Change this [setting] for more [result]:' then confirm the viewer's fear, 'I did the work for you', a contrarian reframe, an open loop, and the payoff with the comment keyword. Hook: one box, one sentence ending in a colon (one hook line; it wraps). Gone after 3 seconds.\n\nCaptions are one word at a time: keep it brisk.\n\nCamera: tight on the face for the hook, full frame for the fear, a closer side angle for 'I did the work', full frame for the reframe, tight again for the call to action."
+}

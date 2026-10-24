@@ -1,0 +1,60 @@
+{
+  "name": "Post This Today",
+  "source": "https://www.instagram.com/p/DM1OzBsSXIY/",
+  "reference": "35s podcast set, close-up to wide every 3-6 seconds, word-stack captions from the first word, no hook graphic.",
+  "length": {
+    "min": 25,
+    "max": 45
+  },
+  "hook": {
+    "look": "none"
+  },
+  "captions": {
+    "look": "stack",
+    "x": 0.11,
+    "y": 0.57,
+    "size": 62,
+    "small": 46,
+    "big": 100,
+    "block_words": 9,
+    "line_chars": 16
+  },
+  "shots": [
+    {
+      "at": 0,
+      "zoom": 1.55
+    },
+    {
+      "at": 0.08,
+      "zoom": 1.0
+    },
+    {
+      "at": 0.22,
+      "zoom": 1.55
+    },
+    {
+      "at": 0.33,
+      "zoom": 1.0
+    },
+    {
+      "at": 0.51,
+      "zoom": 1.25
+    },
+    {
+      "at": 0.65,
+      "zoom": 1.0
+    },
+    {
+      "at": 0.77,
+      "zoom": 1.55
+    }
+  ],
+  "focus": {
+    "x": 0.5,
+    "y": 0.3
+  },
+  "pauses": {
+    "max_gap": 0.2
+  },
+  "edit_notes": "Complete give in 35 seconds: 'Here's a ... you can post today', then Step 1 to Step 4 with zero friction, proof, and a cheeky sign-off ('You're welcome.'). The first sentence is the hook in the stack, so start right on it.\n\nKeep every 'Step N,' line; it shows as its own line. `emphasis`: one word per sentence (CAN, the step's verb, a number).\n\nCamera: tight on the face for the hook, cut wide on step one, tight on step two, wide on the poll step, medium on the options, wide, then tight for the sign-off. Fast: cut pauses hard."
+}

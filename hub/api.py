@@ -80,6 +80,8 @@ class NewVideo(BaseModel):
     callback_url: str | None = Field(None, description="https URL we POST to when the draft is ready or failed")
     hook: str | None = Field(None, description="The on-screen hook the creator already wrote; the agent uses it")
     script: str | None = Field(None, description="The script the creator read, if they filmed from one")
+    template: str | None = Field(None, description="Which reference reel to copy the edit of (a recipe id like "
+                                                   "'R09', see recipes/). Unknown ids get the house style.")
 
 
 class Review(BaseModel):
@@ -142,8 +144,8 @@ def new_video(req: NewVideo):
            "video": str(web.UPLOADS_DIR / job_id / filename), "source": source,
            "external_id": req.external_id, "callback_url": req.callback_url, "via": "api",
            "status": "queued", "created": time.time(), "log": []}
-    if req.hook or req.script:
-        job["brief"] = {"hook": req.hook, "script": req.script}
+    if req.hook or req.script or req.template:
+        job["brief"] = {"hook": req.hook, "script": req.script, "template": req.template}
     web.save_job(job)
     web.enqueue(job_id)
     return describe(job)
